@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Contacto } from "@prisma/client";
-import { eliminarContacto, guardarContacto } from "@/actions/marcas";
+import { eliminarContacto, eliminarMarca, guardarContacto } from "@/actions/marcas";
 import { Formulario } from "@/components/formularios";
 import { Area, Entrada, Fecha } from "@/components/campos";
 
@@ -54,6 +54,24 @@ export function BorrarContacto({ contactoId }: { contactoId: string }) {
       }}
     >
       <button type="submit" className="no-imprimir text-xs text-riesgo hover:underline">Eliminar</button>
+    </form>
+  );
+}
+
+export function BorrarMarca({ marcaId, contratos }: { marcaId: string; contratos: number }) {
+  if (contratos > 0) {
+    return <span className="text-xs text-tinta-3" title="Elimina o reasigna sus contratos antes">No se puede eliminar: tiene {contratos} contrato(s)</span>;
+  }
+  return (
+    <form
+      action={async () => {
+        await eliminarMarca(marcaId);
+      }}
+      onSubmit={(e) => {
+        if (!window.confirm("¿Eliminar la marca y sus contactos?")) e.preventDefault();
+      }}
+    >
+      <button type="submit" className="rounded border border-riesgo/40 px-3.5 py-2 text-sm font-medium text-riesgo hover:bg-riesgo-suave">Eliminar marca</button>
     </form>
   );
 }

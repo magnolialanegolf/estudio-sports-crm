@@ -104,21 +104,38 @@ export function BorrarHito({ hitoId }: { hitoId: string }) {
   );
 }
 
-export function PanelCompromiso({ contratoId, compromiso, textoBoton }: { contratoId: string; compromiso?: Compromiso; textoBoton: string }) {
+type Asignable = { id: string; nombre: string; rol: string };
+
+export function PanelCompromiso({ contratoId, compromiso, textoBoton, asignables }: { contratoId: string; compromiso?: Compromiso; textoBoton: string; asignables: Asignable[] }) {
   const [abierto, setAbierto] = useState(false);
   const accion = guardarCompromiso.bind(null, contratoId, compromiso?.id ?? null);
+  const etiquetaRol: Record<string, string> = { PRODUCCION: "producción", ADMIN_GENERAL: "administración", DIRECTOR: "director" };
   return (
     <>
       <BotonPanel onClick={() => setAbierto(true)} tono={compromiso ? "neutro" : "primario"}>{textoBoton}</BotonPanel>
       <Dialogo titulo={compromiso ? "Editar compromiso" : "Nuevo compromiso"} abierto={abierto} cerrar={() => setAbierto(false)}>
         <Formulario accion={accion} alGuardar={() => setAbierto(false)}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Entrada nombre="descripcion" etiqueta="Descripción" valor={compromiso?.descripcion} requerido className="sm:col-span-2" placeholder="Dos menciones en redes al mes, presencia en evento…" />
+            <Entrada nombre="descripcion" etiqueta="Descripción" valor={compromiso?.descripcion} requerido className="sm:col-span-2" placeholder="Mención en redes, presencia en evento, contenido para pódcast…" />
             <Seleccion nombre="tipo" etiqueta="Tipo" valor={compromiso?.tipo ?? "ENTREGABLE"} opciones={OPCIONES.tipoCompromiso} />
             <Seleccion nombre="estado" etiqueta="Estado" valor={compromiso?.estado ?? "PENDIENTE"} opciones={OPCIONES.estadoCompromiso} />
             <Fecha nombre="fecha" etiqueta="Fecha compromiso" valor={compromiso?.fecha} />
-            <Entrada nombre="responsable" etiqueta="Responsable" valor={compromiso?.responsable} placeholder="Talento, director, marca…" />
-            <Area nombre="notas" etiqueta="Notas" valor={compromiso?.notas} filas={2} className="sm:col-span-2" />
+            <Seleccion
+              nombre="asignadoAId"
+              etiqueta="Responsable (usuario del portal)"
+              valor={compromiso?.asignadoAId}
+              opciones={asignables.map((u) => ({ valor: u.id, texto: `${u.nombre} · ${etiquetaRol[u.rol] ?? u.rol}` }))}
+              vacio="Sin asignar"
+              ayuda="La persona asignada lo ve en sus tareas y lo reporta."
+            />
+            <Entrada nombre="responsable" etiqueta="Responsable externo (texto)" valor={compromiso?.responsable} placeholder="Talento, agencia, la marca…" />
+            {!compromiso ? (
+              <div className="grid grid-cols-2 gap-3 rounded border border-linea bg-superficie-2 p-3 sm:col-span-2">
+                <Entrada nombre="repetirCantidad" etiqueta="Repetir · cantidad" tipo="number" paso="1" placeholder="4" ayuda="Genera varias tareas a partir de la fecha." />
+                <Seleccion nombre="repetirCada" etiqueta="Repetir · cada" opciones={[{ valor: "SEMANA", texto: "Semana" }, { valor: "QUINCENA", texto: "Quincena" }, { valor: "MES", texto: "Mes" }]} vacio="No repetir" />
+              </div>
+            ) : null}
+            <Area nombre="notas" etiqueta="Instrucciones" valor={compromiso?.notas} filas={2} className="sm:col-span-2" ayuda="Lo que la persona responsable necesita saber para ejecutar." />
           </div>
         </Formulario>
       </Dialogo>
@@ -127,7 +144,7 @@ export function PanelCompromiso({ contratoId, compromiso, textoBoton }: { contra
 }
 
 export function AccionesCompromiso({ compromisoId, estado }: { compromisoId: string; estado: string }) {
-  const abierto = estado === "PENDIENTE" || estado === "EN_CURSO";
+  const abierto = estado === "PENDIENTE" || estado === "EN_CURSO" || estado === "REQUIERE_ATENCION";
   return (
     <div className="no-imprimir flex items-center gap-2">
       {abierto ? (

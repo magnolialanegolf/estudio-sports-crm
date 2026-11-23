@@ -5,6 +5,10 @@ import type { NextConfig } from "next";
 // accidental de datos financieros entre usuarios.
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Carga de contratos en PDF desde acciones de servidor.
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -135,10 +135,12 @@ export const OPCIONES = {
   tipoCompromiso: [
     { valor: "ENTREGABLE", texto: "Entregable con la marca" },
     { valor: "SEGUIMIENTO", texto: "Seguimiento interno" },
+    { valor: "FECHA_CLAVE", texto: "Fecha clave del contrato" },
   ],
   estadoCompromiso: [
     { valor: "PENDIENTE", texto: "Pendiente" },
     { valor: "EN_CURSO", texto: "En curso" },
+    { valor: "REQUIERE_ATENCION", texto: "Requiere atención" },
     { valor: "CUMPLIDO", texto: "Cumplido" },
     { valor: "CANCELADO", texto: "Cancelado" },
   ],
@@ -146,6 +148,7 @@ export const OPCIONES = {
     { valor: "ADMIN_GENERAL", texto: "Administrador general" },
     { valor: "DIRECTOR", texto: "Director comercial" },
     { valor: "ADMINISTRACION", texto: "Administración" },
+    { valor: "PRODUCCION", texto: "Producción" },
     { valor: "LECTURA", texto: "Lectura" },
   ],
 };

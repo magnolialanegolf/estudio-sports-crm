@@ -73,8 +73,8 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
       orderBy: { fechaFacturar: "asc" },
     }),
     db.compromiso.findMany({
-      where: { contrato: filtro, estado: { in: ["PENDIENTE", "EN_CURSO"] }, fecha: { lte: limite } },
-      include: { contrato: { select: { id: true, codigo: true, marca: { select: { nombre: true } } } } },
+      where: { contrato: filtro, OR: [{ estado: { in: ["PENDIENTE", "EN_CURSO"] }, fecha: { lte: limite } }, { estado: "REQUIERE_ATENCION" }] },
+      include: { contrato: { select: { id: true, codigo: true, marca: { select: { nombre: true } } } }, asignadoA: { select: { nombre: true } } },
       orderBy: { fecha: "asc" },
     }),
     db.contrato.findMany({
@@ -98,14 +98,16 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
     });
   }
   for (const k of compromisos) {
-    const vencido = k.fecha! < hoy;
+    const atencion = k.estado === "REQUIERE_ATENCION";
+    const vencido = atencion || (!!k.fecha && k.fecha < hoy);
+    const quien = k.asignadoA ? k.asignadoA.nombre : k.responsable ?? "sin responsable";
     alertas.push({
       tipo: vencido ? "compromiso_vencido" : "compromiso_proximo",
       gravedad: vencido ? "riesgo" : "neutro",
       titulo: `${k.contrato.marca.nombre} · ${k.descripcion}`,
-      detalle: k.responsable ? `Responsable: ${k.responsable}` : "Sin responsable",
+      detalle: atencion ? `Requiere atención · ${quien}${k.reporte ? ` · ${k.reporte.slice(0, 120)}` : ""}` : k.asignadoA ? `Responsable: ${k.asignadoA.nombre}${k.estado === "EN_CURSO" ? " · en curso" : ""}` : k.responsable ? `Responsable: ${k.responsable}` : "Sin responsable asignado",
       fecha: k.fecha,
-      href: `/contratos/${k.contrato.id}`,
+      href: `/tareas/${k.id}`,
     });
   }
   for (const c of contratos) {
@@ -161,7 +163,7 @@ export async function resumenPorDirector(s: Sesion, directorIds?: string[]): Pro
       reglasPara(s, dir.id),
       db.pagoComision.findMany({ where: { directorId: dir.id }, select: { monto: true } }),
       db.cartera.count({ where: { directorId: dir.id, hasta: null } }),
-      db.compromiso.count({ where: { contrato: { directorId: dir.id }, estado: { in: ["PENDIENTE", "EN_CURSO"] }, fecha: { lt: hoy } } }),
+      db.compromiso.count({ where: { contrato: { directorId: dir.id }, estado: { in: ["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION"] }, fecha: { lt: hoy } } }),
     ]);
 
     const vigentes = contratos.filter((c) => c.estado === "VIGENTE");

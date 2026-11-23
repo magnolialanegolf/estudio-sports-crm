@@ -14,8 +14,11 @@ const PRINCIPAL: Enlace[] = [
   { href: "/calendario", texto: "Calendario" },
   { href: "/cobranza", texto: "Cobranza" },
   { href: "/comisiones", texto: "Comisiones" },
+  { href: "/tareas", texto: "Tareas" },
   { href: "/reportes", texto: "Reportes" },
 ];
+
+const PRODUCCION: Enlace[] = [{ href: "/tareas", texto: "Mis tareas" }];
 
 const ADMINISTRACION: Enlace[] = [
   { href: "/tablero", texto: "Tablero", roles: ["ADMIN_GENERAL", "ADMINISTRACION", "LECTURA"] },
@@ -53,7 +56,8 @@ export function Navegacion({
 }) {
   const ruta = usePathname();
   const [abierto, setAbierto] = useState(false);
-  const admin = ADMINISTRACION.filter((e) => !e.roles || e.roles.includes(rol));
+  const admin = rol === "PRODUCCION" ? [] : ADMINISTRACION.filter((e) => !e.roles || e.roles.includes(rol));
+  const principal = rol === "PRODUCCION" ? PRODUCCION : PRINCIPAL;
 
   const cerrar = () => setAbierto(false);
 
@@ -88,7 +92,7 @@ export function Navegacion({
         {abierto ? (
           <nav className="border-t border-linea px-4 py-3 lg:hidden">
             <div className="grid grid-cols-2 gap-1">
-              {PRINCIPAL.map((e) => (
+              {principal.map((e) => (
                 <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
               ))}
               {admin.map((e) => (
@@ -104,7 +108,7 @@ export function Navegacion({
       <div className="flex flex-1 flex-col lg:flex-row">
       <aside className="no-imprimir hidden w-56 shrink-0 border-r border-linea bg-superficie lg:block">
         <nav className="sticky top-14 flex flex-col gap-0.5 p-3">
-          {PRINCIPAL.map((e) => (
+          {principal.map((e) => (
             <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
           ))}
           {admin.length ? (

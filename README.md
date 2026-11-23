@@ -21,11 +21,14 @@ Desarrollado por Magnolia Digital. Piloto con un director comercial; diseñado d
 | Administrador general | Todo: consolidado, tablero, directores, carteras, reglas de comisión, usuarios, bitácora, pagos de comisión. |
 | Director comercial | Solo su cartera: marcas, contratos, compromisos, hitos y pagos. Ve sus comisiones. No edita reglas ni asignaciones. |
 | Administración | Facturas y cobros de todas las carteras. No ve comisiones. |
+| Producción | Solo sus tareas asignadas (marca, qué hacer, fecha, instrucciones). Reporta avance, cumplimiento o «requiere atención». No ve montos, contratos ni comisiones. |
 | Lectura | Consulta el consolidado sin editar. |
 
 ## Módulos
 
-Hoy (vencidos y próximos 30 días) · Marcas y contactos · Contratos con línea de tiempo, hitos de cobro y compromisos · Calendario de dos capas con exportación ICS · Cobranza por antigüedad · Comisiones · Reportes (informe de dirección e informe consolidado, imprimibles en PDF) · Tablero · Directores y carteras · Reglas de comisión · Usuarios · Bitácora · Exportación CSV.
+Hoy (vencidos y próximos 30 días) · Marcas y contactos · Contratos con línea de tiempo, hitos de cobro, compromisos, cumplimiento de entregables y documentos adjuntos · Tareas (entregables asignados a producción, con repetición «N veces cada semana/quincena/mes», reporte y estado «requiere atención») · Calendario de dos capas y calendario personal por suscripción (Google Calendar, iPhone, Outlook) · Cobranza por antigüedad · Comisiones · Reportes (informe de dirección e informe consolidado, imprimibles en PDF) · Tablero · Directores, carteras y cartera de demostración anonimizada · Reglas de comisión · Usuarios · Bitácora · Exportación CSV.
+
+Los documentos (PDF, PNG, JPG hasta 10 MB) se guardan en la base durante el piloto; con volumen alto se migran a almacenamiento de objetos.
 
 ## Stack
 
@@ -47,7 +50,7 @@ pnpm dev
 
 `prisma/seed.ts` transcribe el archivo «CRM Comercial Estudio Sport» (corte 23 de noviembre de 2026) tal cual, con sus contradicciones anotadas en `observaciones` de cada contrato y las banderas `confirmado` en falso donde el archivo no tiene respaldo. Incluye una **dirección de demostración** con datos ficticios para mostrar el consolidado; se elimina desde Directores.
 
-Usuarios iniciales: `admin`, `miguel`, `demo`. Las contraseñas se toman de `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL` y `SEED_CLAVE_DEMO`; sin esas variables se usan valores por defecto de desarrollo que deben cambiarse en el primer ingreso (Mi cuenta → Cambiar contraseña).
+Usuarios iniciales: `admin`, `miguel`, `demo`, `produccion`. Las contraseñas se toman de `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL`, `SEED_CLAVE_DEMO` y `SEED_CLAVE_PRODUCCION`; sin esas variables se usan valores por defecto de desarrollo que deben cambiarse en el primer ingreso (Mi cuenta → Cambiar contraseña).
 
 ## Despliegue
 
@@ -58,4 +61,4 @@ Usuarios iniciales: `admin`, `miguel`, `demo`. Las contraseñas se toman de `SEE
 
 ## Pendientes de la siguiente fase
 
-Envío automático de informes por correo · carga de documentos firmados · alertas por correo a 90/60/30 días · alta de los demás directores y de los socios · migración de cuentas a Estudio Sports.
+Envío automático de informes y alertas por correo · sincronización bidireccional con Google Calendar (requiere aplicación en Google Cloud a nombre de Estudio Sports) · almacenamiento de objetos para documentos · alta de los demás directores y de los socios · migración de cuentas a Estudio Sports.

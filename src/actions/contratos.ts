@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
-import { autorizaContrato, puedeCapturar, puedeCobrar, requerirSesion, veTodo } from "@/lib/acceso";
+import { autorizaContrato, esProduccion, puedeCapturar, puedeCobrar, requerirSesion, veTodo } from "@/lib/acceso";
 import { casilla, deFormulario, entero, fechaOpcional, primerError, texto, textoRequerido, type Resultado } from "./util";
 
 const esquemaContrato = z.object({
@@ -194,13 +194,24 @@ export async function eliminarHito(hitoId: string) {
 // ───────── Compromisos ─────────
 
 const esquemaCompromiso = z.object({
-  tipo: z.enum(["ENTREGABLE", "SEGUIMIENTO"]),
+  tipo: z.enum(["ENTREGABLE", "SEGUIMIENTO", "FECHA_CLAVE"]),
   descripcion: textoRequerido(400),
   fecha: fechaOpcional(),
   responsable: texto(120),
-  estado: z.enum(["PENDIENTE", "EN_CURSO", "CUMPLIDO", "CANCELADO"]),
+  asignadoAId: texto(64),
+  estado: z.enum(["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION", "CUMPLIDO", "CANCELADO"]),
   notas: texto(2000),
+  // Repetición: genera N compromisos a partir de la fecha, cada semana, quincena o mes.
+  repetirCantidad: entero(),
+  repetirCada: z.preprocess((v) => (v === "" ? null : v), z.enum(["SEMANA", "QUINCENA", "MES"]).nullable()),
 });
+
+async function asignableValido(id: string | null) {
+  if (!id) return null;
+  const u = await db.usuario.findUnique({ where: { id }, select: { id: true, activo: true, rol: true } });
+  if (!u || !u.activo) return null;
+  return u.id;
+}
 
 export async function guardarCompromiso(contratoId: string, compromisoId: string | null, _prev: Resultado, fd: FormData): Promise<Resultado> {
   const s = await requerirSesion();
@@ -209,26 +220,83 @@ export async function guardarCompromiso(contratoId: string, compromisoId: string
   if (!c || !autorizaContrato(s, c)) return { error: "Contrato no disponible." };
   const parse = esquemaCompromiso.safeParse(deFormulario(fd));
   if (!parse.success) return { error: primerError(parse.error) };
+  const { repetirCantidad, repetirCada, ...d } = parse.data;
+  const asignadoAId = await asignableValido(d.asignadoAId);
+  const datos = { ...d, asignadoAId, cumplidoEn: d.estado === "CUMPLIDO" ? new Date() : null };
+
   if (compromisoId) {
-    await db.compromiso.update({ where: { id: compromisoId, contratoId }, data: parse.data });
-    await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { contratoId, estado: parse.data.estado } });
+    const actual = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { estado: true, cumplidoEn: true } });
+    await db.compromiso.update({
+      where: { id: compromisoId, contratoId },
+      data: { ...datos, cumplidoEn: d.estado === "CUMPLIDO" ? (actual?.cumplidoEn ?? new Date()) : null },
+    });
+    await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { contratoId, estado: d.estado, asignadoAId } });
   } else {
-    const k = await db.compromiso.create({ data: { ...parse.data, contratoId } });
-    await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "compromiso", entidadId: k.id, detalle: { contratoId } });
+    const cantidad = repetirCantidad && repetirCada && d.fecha ? Math.min(Math.max(repetirCantidad, 1), 60) : 1;
+    const base = d.fecha;
+    const fechas: (Date | null)[] = [];
+    for (let i = 0; i < cantidad; i++) {
+      if (!base || i === 0) {
+        fechas.push(base);
+        continue;
+      }
+      const f = new Date(base);
+      if (repetirCada === "SEMANA") f.setUTCDate(f.getUTCDate() + 7 * i);
+      else if (repetirCada === "QUINCENA") f.setUTCDate(f.getUTCDate() + 15 * i);
+      else f.setUTCMonth(f.getUTCMonth() + i);
+      fechas.push(f);
+    }
+    const creados = await db.$transaction(
+      fechas.map((fecha, i) =>
+        db.compromiso.create({
+          data: { ...datos, contratoId, fecha, descripcion: cantidad > 1 ? `${d.descripcion} (${i + 1} de ${cantidad})` : d.descripcion },
+        }),
+      ),
+    );
+    await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "compromiso", entidadId: creados[0]?.id, detalle: { contratoId, cantidad, asignadoAId } });
   }
   revalidatePath(`/contratos/${contratoId}`);
+  revalidatePath("/tareas");
   revalidatePath("/");
   return { ok: true };
 }
 
-export async function cambiarEstadoCompromiso(compromisoId: string, estado: "PENDIENTE" | "EN_CURSO" | "CUMPLIDO" | "CANCELADO") {
+// Cambio de estado con reporte. Lo usan quien captura sobre su cartera y producción sobre lo asignado.
+export async function reportarCompromiso(compromisoId: string, _prev: Resultado, fd: FormData): Promise<Resultado> {
   const s = await requerirSesion();
-  if (!puedeCapturar(s)) return;
   const k = await db.compromiso.findUnique({ where: { id: compromisoId }, include: { contrato: { select: { id: true, directorId: true } } } });
-  if (!k || !autorizaContrato(s, k.contrato)) return;
-  await db.compromiso.update({ where: { id: compromisoId }, data: { estado } });
+  if (!k) return { error: "Tarea no encontrada." };
+  const autorizado = esProduccion(s) ? k.asignadoAId === s.usuarioId : puedeCapturar(s) && autorizaContrato(s, k.contrato);
+  if (!autorizado) return { error: "Sin permiso sobre esta tarea." };
+  const estado = String(fd.get("estado") ?? "");
+  if (!["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION", "CUMPLIDO", "CANCELADO"].includes(estado)) return { error: "Estado inválido." };
+  if (estado === "CANCELADO" && esProduccion(s)) return { error: "Producción no cancela tareas; repórtalo al director." };
+  const reporte = String(fd.get("reporte") ?? "").trim().slice(0, 2000) || null;
+  await db.compromiso.update({
+    where: { id: compromisoId },
+    data: {
+      estado: estado as "PENDIENTE" | "EN_CURSO" | "REQUIERE_ATENCION" | "CUMPLIDO" | "CANCELADO",
+      reporte: reporte ?? k.reporte,
+      cumplidoEn: estado === "CUMPLIDO" ? (k.cumplidoEn ?? new Date()) : null,
+    },
+  });
+  await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { estado, reporte: reporte ? true : false } });
+  revalidatePath(`/contratos/${k.contrato.id}`);
+  revalidatePath("/tareas");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function cambiarEstadoCompromiso(compromisoId: string, estado: "PENDIENTE" | "EN_CURSO" | "REQUIERE_ATENCION" | "CUMPLIDO" | "CANCELADO") {
+  const s = await requerirSesion();
+  const k = await db.compromiso.findUnique({ where: { id: compromisoId }, include: { contrato: { select: { id: true, directorId: true } } } });
+  if (!k) return;
+  const autorizado = esProduccion(s) ? k.asignadoAId === s.usuarioId && estado !== "CANCELADO" : puedeCapturar(s) && autorizaContrato(s, k.contrato);
+  if (!autorizado) return;
+  await db.compromiso.update({ where: { id: compromisoId }, data: { estado, cumplidoEn: estado === "CUMPLIDO" ? (k.cumplidoEn ?? new Date()) : null } });
   await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { estado } });
   revalidatePath(`/contratos/${k.contrato.id}`);
+  revalidatePath("/tareas");
   revalidatePath("/");
 }
 
@@ -240,4 +308,5 @@ export async function eliminarCompromiso(compromisoId: string) {
   await db.compromiso.delete({ where: { id: compromisoId } });
   await registrar({ usuarioId: s.usuarioId, accion: "eliminar", entidad: "compromiso", entidadId: compromisoId, detalle: { descripcion: k.descripcion } });
   revalidatePath(`/contratos/${k.contrato.id}`);
+  revalidatePath("/tareas");
 }

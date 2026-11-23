@@ -92,10 +92,12 @@ export const ETIQUETAS = {
   tipoCompromiso: {
     ENTREGABLE: "Entregable",
     SEGUIMIENTO: "Seguimiento",
+    FECHA_CLAVE: "Fecha clave",
   },
   estadoCompromiso: {
     PENDIENTE: "Pendiente",
     EN_CURSO: "En curso",
+    REQUIERE_ATENCION: "Requiere atención",
     CUMPLIDO: "Cumplido",
     CANCELADO: "Cancelado",
   },
@@ -103,6 +105,7 @@ export const ETIQUETAS = {
     ADMIN_GENERAL: "Administrador general",
     DIRECTOR: "Director comercial",
     ADMINISTRACION: "Administración",
+    PRODUCCION: "Producción",
     LECTURA: "Lectura",
   },
 } as const;

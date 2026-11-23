@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
-import { esAdmin, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
+import { puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
 import { deFormulario, fechaOpcional, primerError, texto, textoRequerido, type Resultado } from "./util";
 
 const esquemaMarca = z.object({
@@ -49,13 +49,17 @@ export async function guardarMarca(id: string | null, _prev: Resultado, fd: Form
   }
 }
 
-export async function eliminarMarca(id: string) {
+export async function eliminarMarca(id: string): Promise<Resultado> {
   const s = await requerirSesion();
-  if (!esAdmin(s)) return;
+  if (!puedeCapturar(s)) return { error: "Sin permiso." };
+  if (!veTodo(s)) {
+    const propia = await db.cartera.findFirst({ where: { marcaId: id, directorId: s.directorId!, hasta: null } });
+    if (!propia) return { error: "La marca no pertenece a tu cartera." };
+  }
   const n = await db.contrato.count({ where: { marcaId: id } });
-  if (n > 0) return; // con contratos no se elimina; se desasigna
-  await db.marca.delete({ where: { id } });
-  await registrar({ usuarioId: s.usuarioId, accion: "eliminar", entidad: "marca", entidadId: id });
+  if (n > 0) return { error: "La marca tiene contratos. Elimina o reasigna los contratos antes." };
+  const m = await db.marca.delete({ where: { id } });
+  await registrar({ usuarioId: s.usuarioId, accion: "eliminar", entidad: "marca", entidadId: id, detalle: { nombre: m.nombre } });
   revalidatePath("/marcas");
   redirect("/marcas");
 }

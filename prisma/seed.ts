@@ -544,6 +544,7 @@ async function main() {
     admin: process.env.SEED_CLAVE_ADMIN ?? "EstudioSports-Admin-2026",
     miguel: process.env.SEED_CLAVE_MIGUEL ?? "EstudioSports-Miguel-2026",
     demo: process.env.SEED_CLAVE_DEMO ?? "EstudioSports-Demo-2026",
+    produccion: process.env.SEED_CLAVE_PRODUCCION ?? "EstudioSports-Produccion-2026",
   };
   const hash = (c: string) => bcrypt.hash(c, 12);
 
@@ -552,6 +553,7 @@ async function main() {
       { usuario: "admin", nombre: "Administrador general", rol: "ADMIN_GENERAL", passwordHash: await hash(claves.admin) },
       { usuario: "miguel", nombre: "Miguel Moisés Lotfe", rol: "DIRECTOR", directorId: miguel.id, passwordHash: await hash(claves.miguel) },
       { usuario: "demo", nombre: "Director de demostración", rol: "DIRECTOR", directorId: demo.id, passwordHash: await hash(claves.demo) },
+      { usuario: "produccion", nombre: "Producción de contenido", rol: "PRODUCCION", passwordHash: await hash(claves.produccion) },
     ],
   });
 
@@ -725,7 +727,7 @@ async function main() {
     reglas: await db.reglaComision.count(),
   };
   console.log("Listo:", totales);
-  console.log("Usuarios: admin / miguel / demo (claves en SEED_CLAVE_* o valores por defecto del seed).");
+  console.log("Usuarios: admin / miguel / demo / produccion (claves en SEED_CLAVE_* o valores por defecto del seed).");
 }
 
 main()

@@ -3,15 +3,24 @@ import { db } from "@/lib/db";
 import { filtroMarcas, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
 import { Boton, Pagina, Tarjeta } from "@/components/ui";
 import { FormularioMarca } from "../../formulario-marca";
+import { BorrarMarca } from "../paneles";
 
 export default async function EditarMarca({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
   const { id } = await params;
   if (!puedeCapturar(s)) redirect(`/marcas/${id}`);
-  const m = await db.marca.findFirst({ where: { id, ...filtroMarcas(s) } });
+  const m = await db.marca.findFirst({ where: { id, ...filtroMarcas(s) }, include: { _count: { select: { contratos: true } } } });
   if (!m) notFound();
   return (
-    <Pagina titulo={`Editar · ${m.nombre}`} acciones={<Boton href={`/marcas/${id}`}>Volver</Boton>}>
+    <Pagina
+      titulo={`Editar · ${m.nombre}`}
+      acciones={
+        <>
+          <Boton href={`/marcas/${id}`}>Volver</Boton>
+          <BorrarMarca marcaId={id} contratos={m._count.contratos} />
+        </>
+      }
+    >
       <Tarjeta>
         <FormularioMarca marca={m} directores={[]} global={veTodo(s)} />
       </Tarjeta>

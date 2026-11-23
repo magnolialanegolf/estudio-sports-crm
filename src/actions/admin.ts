@@ -179,3 +179,152 @@ export async function guardarUsuario(id: string | null, _prev: Resultado, fd: Fo
   revalidatePath("/usuarios");
   return { ok: true };
 }
+
+// ───────── Cartera de demostración ─────────
+// Reconstruye la dirección de demostración como copia anonimizada de la cartera
+// de un director real: marcas "Marca 1, 2, 3…", montos alterados, sin notas ni
+// contactos. Sirve para presentar el portal sin exponer datos de terceros.
+
+const FACTORES = [0.8, 1.15, 0.65, 1.3, 0.9, 1.2, 0.75, 1.05, 0.85, 1.1, 0.7, 1.25];
+const redondear = (n: number, factor: number) => Math.max(10_000, Math.round((n * factor) / 10_000) * 10_000);
+
+export async function regenerarDemo(_prev: Resultado, fd: FormData): Promise<Resultado> {
+  const s = await requerirAdmin();
+  const origenId = String(fd.get("origenId") ?? "");
+  const origen = await db.director.findUnique({ where: { id: origenId, esDemo: false } });
+  if (!origen) return { error: "Elige un director real como origen." };
+
+  // Director de demostración: se reutiliza o se crea, y se vacía.
+  let demo = await db.director.findFirst({ where: { esDemo: true } });
+  if (!demo) demo = await db.director.create({ data: { nombre: "Dirección de demostración", esDemo: true, notas: "Director ficticio con datos anonimizados. Eliminar antes de operar." } });
+  const marcasDemo = await db.marca.findMany({ where: { esDemo: true }, select: { id: true } });
+  await db.$transaction([
+    db.pagoComision.deleteMany({ where: { directorId: demo.id } }),
+    db.reglaComision.deleteMany({ where: { directorId: demo.id } }),
+    db.contrato.deleteMany({ where: { directorId: demo.id } }),
+    db.cartera.deleteMany({ where: { directorId: demo.id } }),
+    db.marca.deleteMany({ where: { id: { in: marcasDemo.map((m) => m.id) } } }),
+  ]);
+  if (!(await db.usuario.findFirst({ where: { directorId: demo.id } }))) {
+    await db.usuario.create({ data: { usuario: "demo", nombre: "Director de demostración", rol: "DIRECTOR", directorId: demo.id, passwordHash: await bcrypt.hash(process.env.SEED_CLAVE_DEMO ?? "EstudioSports-Demo-2026", 12) } });
+  }
+
+  // Origen: marcas en cartera activa y sus contratos.
+  const carteras = await db.cartera.findMany({ where: { directorId: origenId, hasta: null }, include: { marca: true }, orderBy: { marca: { nombre: "asc" } } });
+  const contratos = await db.contrato.findMany({
+    where: { directorId: origenId },
+    include: { hitos: true, compromisos: true },
+    orderBy: [{ marcaId: "asc" }, { inicio: "asc" }, { codigo: "asc" }],
+  });
+  const reglas = await db.reglaComision.findMany({ where: { directorId: origenId } });
+  const pagos = await db.pagoComision.findMany({ where: { directorId: origenId } });
+
+  const marcaNueva = new Map<string, { id: string; n: number }>();
+  let n = 0;
+  for (const c of carteras) {
+    n += 1;
+    const m = await db.marca.create({ data: { nombre: `Marca ${n}`, sector: c.marca.sector, esDemo: true } });
+    marcaNueva.set(c.marcaId, { id: m.id, n });
+    await db.cartera.create({ data: { marcaId: m.id, directorId: demo.id, desde: c.desde } });
+  }
+  // Marcas con contratos pero fuera de la cartera activa (históricas).
+  for (const c of contratos) {
+    if (!marcaNueva.has(c.marcaId)) {
+      n += 1;
+      const m = await db.marca.create({ data: { nombre: `Marca ${n}`, esDemo: true } });
+      marcaNueva.set(c.marcaId, { id: m.id, n });
+    }
+  }
+
+  const nombresReales = carteras.map((c) => c.marca.nombre).sort((a, b) => b.length - a.length);
+  const anonimizar = (t: string | null) => {
+    if (!t) return null;
+    let r = t;
+    for (const nombre of nombresReales) r = r.replace(new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "la marca");
+    return r;
+  };
+  const etiquetaTipo: Record<string, string> = { COMERCIAL: "Comercial", PODCAST: "Pódcast", EMBAJADURIA: "Embajaduría", OTRO: "Acuerdo" };
+
+  const contratoNuevo = new Map<string, string>();
+  const porMarca = new Map<string, number>();
+  let i = 0;
+  for (const c of contratos) {
+    const factor = FACTORES[i % FACTORES.length];
+    i += 1;
+    const m = marcaNueva.get(c.marcaId)!;
+    const k = (porMarca.get(m.id) ?? 0) + 1;
+    porMarca.set(m.id, k);
+    const anio = (c.inicio ?? c.vencimiento)?.getUTCFullYear();
+    const proyecto = `${etiquetaTipo[c.tipo] ?? c.tipo}${anio ? ` ${anio}` : ""}${k > 1 ? ` · ${String.fromCharCode(64 + k)}` : ""}`;
+    const creado = await db.contrato.create({
+      data: {
+        codigo: `DEMO-${m.n}-${k}`,
+        marcaId: m.id,
+        directorId: demo.id,
+        proyecto,
+        tipo: c.tipo,
+        estado: c.estado,
+        monto: c.monto === null ? null : redondear(c.monto, factor),
+        montoConfirmado: c.montoConfirmado,
+        inicio: c.inicio,
+        inicioConfirmado: c.inicioConfirmado,
+        vencimiento: c.vencimiento,
+        vencimientoConfirmado: c.vencimientoConfirmado,
+        duracionMeses: c.duracionMeses,
+        talento: null,
+        notas: "Datos de demostración, anonimizados.",
+        hitos: {
+          create: c.hitos.map((h) => ({
+            concepto: anonimizar(h.concepto) ?? h.concepto,
+            importe: redondear(h.importe, factor),
+            modalidad: h.modalidad,
+            fechaFacturar: h.fechaFacturar,
+            fechaOrientativa: anonimizar(h.fechaOrientativa),
+            estadoFactura: h.estadoFactura,
+            estadoPago: h.estadoPago,
+            montoRecibido: h.montoRecibido > 0 ? redondear(h.montoRecibido, factor) : 0,
+            fechaPago: h.fechaPago,
+            confirmado: h.confirmado,
+          })),
+        },
+        compromisos: {
+          create: c.compromisos.map((k2) => ({
+            tipo: k2.tipo,
+            descripcion: anonimizar(k2.descripcion) ?? k2.descripcion,
+            fecha: k2.fecha,
+            responsable: k2.responsable,
+            estado: k2.estado,
+            cumplidoEn: k2.cumplidoEn,
+          })),
+        },
+      },
+    });
+    contratoNuevo.set(c.id, creado.id);
+  }
+  // Ligas de renovación entre contratos clonados.
+  for (const c of contratos) {
+    if (c.renovacionDeId && contratoNuevo.has(c.renovacionDeId) && contratoNuevo.has(c.id)) {
+      await db.contrato.update({ where: { id: contratoNuevo.get(c.id)! }, data: { renovacionDeId: contratoNuevo.get(c.renovacionDeId)! } });
+    }
+  }
+  for (const r of reglas) {
+    await db.reglaComision.create({
+      data: { directorId: demo.id, marcaId: r.marcaId ? (marcaNueva.get(r.marcaId)?.id ?? null) : null, tipo: r.tipo, pctCasa: r.pctCasa, pctDirector: r.pctDirector, vigenteDesde: r.vigenteDesde, vigenteHasta: r.vigenteHasta },
+    });
+  }
+  let j = 0;
+  for (const p of pagos) {
+    const factor = FACTORES[j % FACTORES.length];
+    j += 1;
+    await db.pagoComision.create({
+      data: { directorId: demo.id, contratoId: p.contratoId ? (contratoNuevo.get(p.contratoId) ?? null) : null, concepto: "Comisión pagada", monto: redondear(p.monto, factor), modalidad: p.modalidad, fechaPago: p.fechaPago, confirmado: p.confirmado },
+    });
+  }
+
+  await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "director", entidadId: demo.id, detalle: { demo: "regenerada", origen: origen.nombre, marcas: marcaNueva.size, contratos: contratos.length } });
+  revalidatePath("/");
+  revalidatePath("/directores");
+  revalidatePath("/marcas");
+  revalidatePath("/contratos");
+  return { ok: true };
+}

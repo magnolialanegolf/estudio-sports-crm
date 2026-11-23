@@ -3,7 +3,7 @@ import { requerirAdmin } from "@/lib/acceso";
 import { fecha } from "@/lib/formato";
 import { Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { Plegable } from "@/components/formularios";
-import { FormularioDirector, FormularioAsignacion, BorrarDemo } from "./paneles";
+import { FormularioDirector, FormularioAsignacion, BorrarDemo, FormularioDemo } from "./paneles";
 
 export default async function Directores() {
   await requerirAdmin();
@@ -73,6 +73,11 @@ export default async function Directores() {
 
         <Tarjeta titulo="Asignar marca" descripcion="La asignación anterior se cierra en la fecha indicada y queda en el historial.">
           <FormularioAsignacion marcas={marcas.map((m) => ({ id: m.id, nombre: m.nombre, actual: m.carteras[0]?.director.nombre ?? null }))} directores={directores.filter((d) => d.activo).map((d) => ({ id: d.id, nombre: d.nombre }))} />
+          <div className="mt-6 border-t border-linea pt-4">
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-tinta-3">Cartera de demostración</div>
+            <p className="mb-3 text-xs text-tinta-2">Reconstruye el usuario <code>demo</code> como copia anonimizada de un director real: marcas «Marca 1, 2, 3…», montos alterados, sin notas ni contactos. Útil para presentar el portal sin exponer datos.</p>
+            <FormularioDemo directores={directores.filter((d) => d.activo && !d.esDemo).map((d) => ({ id: d.id, nombre: d.nombre }))} />
+          </div>
           <div className="mt-5">
             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-tinta-3">Asignación actual</div>
             <ul className="divide-y divide-linea/70 text-sm">

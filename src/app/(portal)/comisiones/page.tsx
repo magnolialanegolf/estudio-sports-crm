@@ -6,6 +6,7 @@ import { directoresVisibles, hitosVisibles, reglasPara, resumenPorDirector, suma
 import { dinero, etiqueta, fecha, porcentaje } from "@/lib/formato";
 import { Aviso, Boton, Cifra, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { FiltroDirector } from "@/components/filtro-director";
+import { BorrarPagoComision } from "./paneles";
 
 export default async function Comisiones({ searchParams }: { searchParams: Promise<{ director?: string }> }) {
   const s = await requerirSesion();
@@ -125,6 +126,7 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
                   <Th>Concepto</Th>
                   <Th>Fecha</Th>
                   <Th derecha>Monto</Th>
+                  {global ? <Th /> : null}
                 </tr>
               </thead>
               <tbody>
@@ -140,6 +142,7 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
                     </Td>
                     <Td>{fecha(p.fechaPago)}</Td>
                     <Td derecha>{dinero(p.monto)}</Td>
+                    {global ? <Td><BorrarPagoComision id={p.id} /></Td> : null}
                   </tr>
                 ))}
               </tbody>

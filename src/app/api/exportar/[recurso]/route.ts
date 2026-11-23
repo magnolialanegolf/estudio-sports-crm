@@ -77,7 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ recu
   if (recurso === "calendario.ics") {
     const [hitos, compromisos] = await Promise.all([
       db.hitoCobro.findMany({ where: { contrato: { ...filtro, estado: { in: ["VIGENTE", "PENDIENTE_FIRMA"] } }, fechaFacturar: { not: null }, estadoPago: { not: "PAGADO" } }, include: { contrato: { include: { marca: true } } } }),
-      db.compromiso.findMany({ where: { contrato: filtro, fecha: { not: null }, estado: { in: ["PENDIENTE", "EN_CURSO"] } }, include: { contrato: { include: { marca: true } } } }),
+      db.compromiso.findMany({ where: { contrato: filtro, fecha: { not: null }, estado: { in: ["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION"] } }, include: { contrato: { include: { marca: true } } } }),
     ]);
     const lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Estudio Sports//CRM comercial//ES", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Estudio Sports · CRM"];
     const dia = (d: Date) => format(d, "yyyyMMdd");

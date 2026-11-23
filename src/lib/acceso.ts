@@ -14,6 +14,14 @@ export function esAdmin(s: Sesion) {
   return s.rol === "ADMIN_GENERAL";
 }
 
+// Producción ejecuta tareas asignadas; no ve montos ni comisiones.
+export function esProduccion(s: Sesion) {
+  return s.rol === "PRODUCCION";
+}
+
+// Rutas permitidas al rol de producción.
+export const RUTAS_PRODUCCION = ["/tareas", "/cuenta"];
+
 // Puede capturar operación comercial (marcas, contratos, hitos, compromisos).
 export function puedeCapturar(s: Sesion) {
   return s.rol === "ADMIN_GENERAL" || s.rol === "DIRECTOR" || s.rol === "ADMINISTRACION";
@@ -34,6 +42,19 @@ export async function requerirSesion(): Promise<Sesion> {
   if (!s) redirect("/ingresar");
   if (s.rol === "DIRECTOR" && !s.directorId) redirect("/ingresar?error=sin-cartera");
   return s;
+}
+
+// Vistas comerciales y financieras: producción no entra.
+export async function requerirComercial(): Promise<Sesion> {
+  const s = await requerirSesion();
+  if (esProduccion(s)) redirect("/tareas");
+  return s;
+}
+
+// Filtro de compromisos según rol: producción solo los suyos.
+export function filtroCompromisos(s: Sesion): Prisma.CompromisoWhereInput {
+  if (esProduccion(s)) return { asignadoAId: s.usuarioId };
+  return { contrato: filtroContratos(s) };
 }
 
 export async function requerirAdmin(): Promise<Sesion> {

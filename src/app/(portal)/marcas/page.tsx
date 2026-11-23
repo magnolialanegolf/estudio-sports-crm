@@ -44,6 +44,7 @@ export default async function Marcas() {
                 <Th derecha>Cobrado</Th>
                 <Th derecha>Por cobrar</Th>
                 <Th>Situación</Th>
+                {puedeCapturar(s) ? <Th /> : null}
               </tr>
             </thead>
             <tbody>
@@ -81,6 +82,11 @@ export default async function Marcas() {
                         ))}
                       </div>
                     </Td>
+                    {puedeCapturar(s) ? (
+                      <Td>
+                        <Link href={`/marcas/${m.id}/editar`} className="no-imprimir text-xs text-acento hover:underline">Editar</Link>
+                      </Td>
+                    ) : null}
                   </tr>
                 );
               })}

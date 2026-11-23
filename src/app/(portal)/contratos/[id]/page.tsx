@@ -10,6 +10,7 @@ import { Aviso, Boton, Cifra, Definicion, Etiqueta, Pagina, PorConfirmar, Tabla,
 import { Anillo } from "@/components/graficas";
 import { LineaTiempo } from "./linea-tiempo";
 import { PanelHito, PanelCompromiso, PanelPago, AccionesCompromiso, BorrarHito } from "./paneles";
+import { SubirDocumento, BorrarDocumento } from "./documentos";
 
 export default async function DetalleContrato({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
@@ -20,9 +21,10 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
       marca: true,
       director: true,
       hitos: { orderBy: [{ fechaFacturar: "asc" }, { creadoEn: "asc" }] },
-      compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }] },
+      compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }], include: { asignadoA: { select: { id: true, nombre: true } } } },
       renovacionDe: { select: { id: true, codigo: true, proyecto: true } },
       renovacion: { select: { id: true, codigo: true, proyecto: true, estado: true } },
+      documentos: { select: { id: true, nombre: true, tipoMime: true, tamano: true, descripcion: true, creadoEn: true, subidoPor: { select: { nombre: true } } }, orderBy: { creadoEn: "desc" } },
     },
   });
   if (!c || !autorizaContrato(s, c)) notFound();
@@ -38,11 +40,17 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
   const veComision = s.rol === "DIRECTOR" || veComisionesDeTodos(s);
 
   const reglas = veComision ? await reglasPara(s, c.directorId) : [];
+  const asignables = puedeEditar
+    ? await db.usuario.findMany({ where: { activo: true, rol: { in: ["PRODUCCION", "ADMIN_GENERAL", "DIRECTOR"] } }, select: { id: true, nombre: true, rol: true }, orderBy: [{ rol: "asc" }, { nombre: "asc" }] })
+    : [];
   const ctx = { id: c.id, directorId: c.directorId, marcaId: c.marcaId, tipo: c.tipo, inicio: c.inicio };
   const comisiones = veComision ? comisionesPorHito(c.hitos.map((h) => ({ ...h, contrato: ctx })), reglas) : [];
   const comisionDevengada = comisiones.reduce((a, k) => a + k.comision, 0);
   const comisionProyectadaTotal = veComision ? c.hitos.reduce((a, h) => a + comisionProyectada(h, ctx, reglas), 0) : 0;
   const sinRegla = comisiones.some((k) => !k.regla);
+  const entregables = c.compromisos.filter((k) => k.tipo === "ENTREGABLE" && k.estado !== "CANCELADO");
+  const entregablesCumplidos = entregables.filter((k) => k.estado === "CUMPLIDO").length;
+  const entregablesRetrasados = entregables.filter((k) => k.estado !== "CUMPLIDO" && ((k.fecha && k.fecha < hoy) || k.estado === "REQUIERE_ATENCION")).length;
 
   return (
     <Pagina
@@ -224,7 +232,20 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
           ) : null}
         </Tarjeta>
 
-        <Tarjeta titulo="Compromisos y acciones" descripcion="Entregables acordados con la marca y seguimientos internos" className="xl:col-span-3">
+        <Tarjeta
+          titulo="Compromisos y acciones"
+          descripcion={
+            entregables.length > 0
+              ? `Cumplimiento del contrato: ${entregablesCumplidos} de ${entregables.length} entregables cumplidos${entregablesRetrasados > 0 ? ` · ${entregablesRetrasados} retrasado(s) o con atención requerida` : ""}`
+              : "Entregables acordados con la marca, fechas clave y seguimientos internos"
+          }
+          className="xl:col-span-3"
+        >
+          {entregables.length > 0 ? (
+            <div className="mb-4 h-1.5 w-full overflow-hidden rounded bg-neutro-suave">
+              <div className={`h-full ${entregablesRetrasados > 0 ? "bg-riesgo" : "bg-ok"}`} style={{ width: `${Math.round((entregablesCumplidos / entregables.length) * 100)}%` }} />
+            </div>
+          ) : null}
           {c.compromisos.length === 0 ? (
             <Vacio>Sin compromisos registrados. Captura aquí lo acordado con la marca.</Vacio>
           ) : (
@@ -242,7 +263,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
               <tbody>
                 {c.compromisos.map((k) => {
                   const d = diasHasta(k.fecha, hoy);
-                  const abierto = k.estado === "PENDIENTE" || k.estado === "EN_CURSO";
+                  const abierto = k.estado === "PENDIENTE" || k.estado === "EN_CURSO" || k.estado === "REQUIERE_ATENCION";
                   return (
                     <tr key={k.id} className="hover:bg-superficie-2">
                       <Td>
@@ -254,15 +275,22 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                         <div>{fecha(k.fecha)}</div>
                         {abierto && k.fecha ? <Etiqueta tono={d !== null && d < 0 ? "riesgo" : d !== null && d <= 7 ? "alerta" : "neutro"}>{textoDias(d)}</Etiqueta> : null}
                       </Td>
-                      <Td className="text-tinta-2">{k.responsable ?? "—"}</Td>
+                      <Td className="text-tinta-2">
+                        {k.asignadoA ? <span className="font-medium text-tinta">{k.asignadoA.nombre}</span> : k.responsable ?? <span className="text-tinta-3">Sin asignar</span>}
+                        {k.asignadoA && k.responsable ? <div className="text-xs text-tinta-3">{k.responsable}</div> : null}
+                      </Td>
                       <Td>
-                        <Etiqueta tono={k.estado === "CUMPLIDO" ? "ok" : k.estado === "EN_CURSO" ? "acento" : k.estado === "CANCELADO" ? "neutro" : "alerta"}>{etiqueta("estadoCompromiso", k.estado)}</Etiqueta>
+                        <Etiqueta tono={k.estado === "CUMPLIDO" ? "ok" : k.estado === "REQUIERE_ATENCION" ? "riesgo" : k.estado === "EN_CURSO" ? "acento" : k.estado === "CANCELADO" ? "neutro" : abierto && d !== null && d < 0 ? "riesgo" : "alerta"}>
+                          {abierto && d !== null && d < 0 ? "Retrasado" : etiqueta("estadoCompromiso", k.estado)}
+                        </Etiqueta>
+                        {k.cumplidoEn ? <div className="text-xs text-tinta-3">{fecha(k.cumplidoEn)}</div> : null}
+                        {k.reporte ? <div className="mt-1 max-w-xs text-xs text-tinta-2" title={k.reporte}>Reporte: {k.reporte.length > 90 ? `${k.reporte.slice(0, 90)}…` : k.reporte}</div> : null}
                       </Td>
                       {puedeEditar ? (
                         <Td>
                           <div className="flex flex-col items-end gap-1">
                             <AccionesCompromiso compromisoId={k.id} estado={k.estado} />
-                            <PanelCompromiso contratoId={c.id} compromiso={k} textoBoton="Editar" />
+                            <PanelCompromiso contratoId={c.id} compromiso={k} textoBoton="Editar" asignables={asignables} />
                           </div>
                         </Td>
                       ) : null}
@@ -274,7 +302,36 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
           )}
           {puedeEditar ? (
             <div className="mt-4">
-              <PanelCompromiso contratoId={c.id} textoBoton="Agregar compromiso" />
+              <PanelCompromiso contratoId={c.id} textoBoton="Agregar compromiso" asignables={asignables} />
+            </div>
+          ) : null}
+        </Tarjeta>
+
+        <Tarjeta titulo="Documentos" descripcion="Contrato firmado y anexos. Solo los ven el director de la cartera y la administración." className="xl:col-span-3">
+          {c.documentos.length === 0 ? (
+            <Vacio>Sin documentos. Sube el contrato firmado en PDF.</Vacio>
+          ) : (
+            <ul className="-mx-5 divide-y divide-linea/70">
+              {c.documentos.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5">
+                  <div className="min-w-0">
+                    <a href={`/api/documentos/${d.id}`} target="_blank" rel="noreferrer" className="font-medium text-acento hover:underline">{d.nombre}</a>
+                    <div className="text-xs text-tinta-3">
+                      {d.descripcion ? `${d.descripcion} · ` : ""}{(d.tamano / 1024 / 1024).toFixed(2)} MB · {fecha(d.creadoEn)}{d.subidoPor ? ` · ${d.subidoPor.nombre}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <a href={`/api/documentos/${d.id}`} target="_blank" rel="noreferrer" className="text-acento hover:underline">Ver</a>
+                    <a href={`/api/documentos/${d.id}?descargar=1`} className="text-acento hover:underline">Descargar</a>
+                    {puedeEditar ? <BorrarDocumento id={d.id} /> : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {puedeEditar ? (
+            <div className="mt-4">
+              <SubirDocumento contratoId={c.id} />
             </div>
           ) : null}
         </Tarjeta>

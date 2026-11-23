@@ -16,6 +16,7 @@ enum Rol {
   ADMIN_GENERAL
   DIRECTOR
   ADMINISTRACION
+  PRODUCCION
   LECTURA
 }
 
@@ -59,11 +60,13 @@ enum Modalidad {
 enum TipoCompromiso {
   ENTREGABLE
   SEGUIMIENTO
+  FECHA_CLAVE
 }
 
 enum EstadoCompromiso {
   PENDIENTE
   EN_CURSO
+  REQUIERE_ATENCION
   CUMPLIDO
   CANCELADO
 }
@@ -80,7 +83,12 @@ model Usuario {
   activo       Boolean   @default(true)
   creadoEn     DateTime  @default(now())
   ultimoAcceso DateTime?
+  icsToken     String?   // liga privada del calendario personal
   bitacora     Bitacora[]
+  compromisosAsignados Compromiso[] @relation("Asignacion")
+  documentos   Documento[]
+
+  @@index([icsToken])
 }
 
 model Director {
@@ -168,6 +176,7 @@ model Contrato {
   actualizadoEn   DateTime       @updatedAt
   hitos           HitoCobro[]
   compromisos     Compromiso[]
+  documentos      Documento[]
 
   @@index([directorId, estado])
   @@index([marcaId])
@@ -183,13 +192,18 @@ model Compromiso {
   descripcion String
   fecha       DateTime?
   responsable String?
+  asignadoAId String?
+  asignadoA   Usuario?         @relation("Asignacion", fields: [asignadoAId], references: [id])
   estado      EstadoCompromiso @default(PENDIENTE)
+  reporte     String?          // lo que informa quien ejecuta la tarea
+  cumplidoEn  DateTime?
   notas       String?
   creadoEn    DateTime         @default(now())
   actualizadoEn DateTime       @updatedAt
 
   @@index([contratoId])
   @@index([fecha])
+  @@index([asignadoAId, estado])
 }
 
 // Hito de cobro: cada factura o pago previsto de un contrato.
@@ -267,4 +281,22 @@ model Bitacora {
 
   @@index([fecha])
   @@index([entidad, entidadId])
+}
+
+// Documento adjunto a un contrato (PDF firmado, anexos). Se guarda en la base
+// durante el piloto; con volumen alto se migra a almacenamiento de objetos.
+model Documento {
+  id          String   @id @default(cuid())
+  contratoId  String
+  contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  nombre      String
+  tipoMime    String
+  tamano      Int
+  contenido   Bytes
+  descripcion String?
+  subidoPorId String?
+  subidoPor   Usuario? @relation(fields: [subidoPorId], references: [id])
+  creadoEn    DateTime @default(now())
+
+  @@index([contratoId])
 }

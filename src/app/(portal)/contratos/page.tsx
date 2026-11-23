@@ -67,6 +67,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
                 <Th derecha>Monto</Th>
                 <Th derecha>Cobrado</Th>
                 <Th>Avance</Th>
+                {puedeCapturar(s) ? <Th /> : null}
               </tr>
             </thead>
             <tbody>
@@ -110,6 +111,11 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
                       </div>
                       <div className="mt-0.5 text-xs text-tinta-3">{Math.round(avance * 100)} %</div>
                     </Td>
+                    {puedeCapturar(s) ? (
+                      <Td>
+                        <Link href={`/contratos/${c.id}/editar`} className="no-imprimir text-xs text-acento hover:underline">Editar</Link>
+                      </Td>
+                    ) : null}
                   </tr>
                 );
               })}
