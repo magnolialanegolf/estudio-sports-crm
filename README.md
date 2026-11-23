@@ -2,6 +2,8 @@
 
 Portal de control comercial de Estudio Sports: marcas, contratos, compromisos con cada marca, calendario de facturación y cobro, comisiones calculadas y reportes para la dirección. Sustituye el control en hoja de cálculo.
 
+Piloto en línea: https://estudiosports.magnolialane.com.mx
+
 Desarrollado por Magnolia Digital. Piloto con un director comercial; diseñado desde el primer día para operar con todos los directores y con la dirección general.
 
 ## Principios del diseño
