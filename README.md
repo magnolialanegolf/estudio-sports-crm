@@ -51,7 +51,7 @@ Usuarios iniciales: `admin`, `miguel`, `demo`. Las contraseñas se toman de `SEE
 
 1. Base de datos en Neon; copiar la cadena de conexión a `DATABASE_URL`.
 2. Proyecto en Vercel ligado al repositorio, con `DATABASE_URL` y `SESSION_SECRET` como variables de entorno.
-3. `pnpm prisma db push` contra la base de producción y `pnpm db:seed` con las variables `SEED_CLAVE_*` definidas.
+3. El comando de construcción aplica el esquema y carga la semilla solo si la base está vacía (`SEED_FORZAR=1` la recarga). Definir `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL` y `SEED_CLAVE_DEMO` antes del primer despliegue.
 4. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
 
 ## Pendientes de la siguiente fase

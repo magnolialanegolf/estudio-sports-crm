@@ -514,6 +514,13 @@ const MARCAS: { nombre: string; sector: string }[] = [
 ];
 
 async function main() {
+  // Protección: en una base que ya tiene usuarios no se recarga nada,
+  // salvo que se pida explícitamente con SEED_FORZAR=1.
+  const yaCargada = (await db.usuario.count()) > 0;
+  if (yaCargada && process.env.SEED_FORZAR !== "1") {
+    console.log("La base ya tiene datos; no se recarga la semilla (usa SEED_FORZAR=1 para forzarla).");
+    return;
+  }
   console.log("Limpiando base…");
   await db.bitacora.deleteMany();
   await db.pagoComision.deleteMany();
