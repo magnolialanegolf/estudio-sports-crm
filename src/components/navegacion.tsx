@@ -25,6 +25,19 @@ const ADMINISTRACION: Enlace[] = [
   { href: "/bitacora", texto: "Bitácora", roles: ["ADMIN_GENERAL"] },
 ];
 
+function Enlace({ e, ruta, alNavegar }: { e: Enlace; ruta: string; alNavegar: () => void }) {
+  const activo = e.href === "/" ? ruta === "/" : ruta.startsWith(e.href);
+  return (
+    <Link
+      href={e.href}
+      onClick={alNavegar}
+      className={`block rounded px-3 py-1.5 text-sm ${activo ? "bg-acento-suave font-medium text-acento" : "text-tinta-2 hover:bg-superficie-2 hover:text-tinta"}`}
+    >
+      {e.texto}
+    </Link>
+  );
+}
+
 export function Navegacion({
   nombre,
   rolEtiqueta,
@@ -42,19 +55,7 @@ export function Navegacion({
   const [abierto, setAbierto] = useState(false);
   const admin = ADMINISTRACION.filter((e) => !e.roles || e.roles.includes(rol));
 
-  const activo = (href: string) => (href === "/" ? ruta === "/" : ruta.startsWith(href));
-
-  const Item = ({ e }: { e: Enlace }) => (
-    <Link
-      href={e.href}
-      onClick={() => setAbierto(false)}
-      className={`block rounded px-3 py-1.5 text-sm ${
-        activo(e.href) ? "bg-acento-suave font-medium text-acento" : "text-tinta-2 hover:bg-superficie-2 hover:text-tinta"
-      }`}
-    >
-      {e.texto}
-    </Link>
-  );
+  const cerrar = () => setAbierto(false);
 
   return (
     <>
@@ -88,10 +89,10 @@ export function Navegacion({
           <nav className="border-t border-linea px-4 py-3 lg:hidden">
             <div className="grid grid-cols-2 gap-1">
               {PRINCIPAL.map((e) => (
-                <Item key={e.href} e={e} />
+                <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
               ))}
               {admin.map((e) => (
-                <Item key={e.href} e={e} />
+                <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
               ))}
               <Link href="/cuenta" onClick={() => setAbierto(false)} className="block rounded px-3 py-1.5 text-sm text-tinta-2 hover:bg-superficie-2">
                 Mi cuenta
@@ -104,18 +105,18 @@ export function Navegacion({
       <aside className="no-imprimir hidden w-56 shrink-0 border-r border-linea bg-superficie lg:block">
         <nav className="sticky top-14 flex flex-col gap-0.5 p-3">
           {PRINCIPAL.map((e) => (
-            <Item key={e.href} e={e} />
+            <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
           ))}
           {admin.length ? (
             <>
               <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-tinta-3">Administración</div>
               {admin.map((e) => (
-                <Item key={e.href} e={e} />
+                <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
               ))}
             </>
           ) : null}
           <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-tinta-3">Cuenta</div>
-          <Item e={{ href: "/cuenta", texto: "Mi cuenta" }} />
+          <Enlace e={{ href: "/cuenta", texto: "Mi cuenta" }} ruta={ruta} alNavegar={cerrar} />
         </nav>
       </aside>
       <main className="min-w-0 flex-1">{children}</main>

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 // Carga inicial a partir del archivo "CRM Comercial Estudio Sport" (corte 23 nov 2026).
 // Los datos se transcriben tal cual. Donde el archivo se contradice o marca
 // "por confirmar", el registro queda con confirmado=false y la observación

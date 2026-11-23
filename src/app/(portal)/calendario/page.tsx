@@ -55,7 +55,10 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
     const p = new URLSearchParams({ mes: format(m, "yyyy-MM") });
     if (directorId) p.set("director", directorId);
     if (capa) p.set("capa", capa);
-    for (const [k, v] of Object.entries(extra ?? {})) v ? p.set(k, v) : p.delete(k);
+    for (const [k, v] of Object.entries(extra ?? {})) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
     return `/calendario?${p.toString()}`;
   };
   const totalCobros = hitos.filter((h) => isSameMonth(h.fechaFacturar!, inicioMes)).reduce((a, h) => a + h.importe, 0);
