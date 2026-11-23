@@ -1,0 +1,270 @@
+// Modelo de datos del CRM comercial de Estudio Sports.
+// Montos en pesos mexicanos sin IVA, enteros. Porcentajes como fracción (0.25 = 25 %).
+// Cada entidad financiera lleva la bandera `confirmado` para distinguir dato
+// respaldado de dato estimado heredado del control anterior en Excel.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ADMIN_GENERAL
+  DIRECTOR
+  ADMINISTRACION
+  LECTURA
+}
+
+enum TipoContrato {
+  COMERCIAL
+  PODCAST
+  EMBAJADURIA
+  OTRO
+}
+
+enum EstadoContrato {
+  PROPUESTA
+  PENDIENTE_FIRMA
+  VIGENTE
+  FINALIZADO
+  CANCELADO
+}
+
+enum EstadoFactura {
+  POR_EMITIR
+  PENDIENTE_AUTORIZACION
+  EMITIDA
+  POR_CONFIRMAR
+}
+
+enum EstadoPago {
+  POR_COBRAR
+  PROGRAMADO
+  SUJETO_A_FIRMA
+  SIN_PROGRAMAR
+  PARCIAL
+  PAGADO
+}
+
+enum Modalidad {
+  EFECTIVO
+  ESPECIE
+  ACCIONES
+}
+
+enum TipoCompromiso {
+  ENTREGABLE
+  SEGUIMIENTO
+}
+
+enum EstadoCompromiso {
+  PENDIENTE
+  EN_CURSO
+  CUMPLIDO
+  CANCELADO
+}
+
+model Usuario {
+  id           String    @id @default(cuid())
+  usuario      String    @unique
+  nombre       String
+  correo       String?
+  passwordHash String
+  rol          Rol
+  directorId   String?
+  director     Director? @relation(fields: [directorId], references: [id])
+  activo       Boolean   @default(true)
+  creadoEn     DateTime  @default(now())
+  ultimoAcceso DateTime?
+  bitacora     Bitacora[]
+}
+
+model Director {
+  id        String   @id @default(cuid())
+  nombre    String
+  correo    String?
+  activo    Boolean  @default(true)
+  esDemo    Boolean  @default(false)
+  notas     String?
+  creadoEn  DateTime @default(now())
+  usuarios  Usuario[]
+  carteras  Cartera[]
+  contratos Contrato[]
+  reglas    ReglaComision[]
+  pagosComision PagoComision[]
+}
+
+model Marca {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  sector    String?
+  notas     String?
+  esDemo    Boolean  @default(false)
+  creadoEn  DateTime @default(now())
+  carteras  Cartera[]
+  contactos Contacto[]
+  contratos Contrato[]
+  reglas    ReglaComision[]
+}
+
+// Asignación Marca ↔ Director con vigencia. Una marca puede cambiar de manos.
+model Cartera {
+  id         String    @id @default(cuid())
+  marcaId    String
+  marca      Marca     @relation(fields: [marcaId], references: [id], onDelete: Cascade)
+  directorId String
+  director   Director  @relation(fields: [directorId], references: [id])
+  desde      DateTime  @default(now())
+  hasta      DateTime?
+  notas      String?
+
+  @@index([directorId, hasta])
+  @@index([marcaId, hasta])
+}
+
+model Contacto {
+  id                String    @id @default(cuid())
+  marcaId           String
+  marca             Marca     @relation(fields: [marcaId], references: [id], onDelete: Cascade)
+  nombre            String
+  cargo             String?
+  correo            String?
+  telefono          String?
+  canalPreferido    String?
+  ultimaInteraccion DateTime?
+  notas             String?
+  creadoEn          DateTime  @default(now())
+}
+
+model Contrato {
+  id              String         @id @default(cuid())
+  codigo          String         @unique
+  marcaId         String
+  marca           Marca          @relation(fields: [marcaId], references: [id])
+  directorId      String
+  director        Director       @relation(fields: [directorId], references: [id])
+  proyecto        String
+  tipo            TipoContrato
+  estado          EstadoContrato
+  monto           Int?           // sin IVA; null cuando aún no hay propuesta
+  montoConfirmado Boolean        @default(false)
+  inicio          DateTime?
+  inicioConfirmado Boolean       @default(false)
+  vencimiento     DateTime?
+  vencimientoConfirmado Boolean  @default(false)
+  duracionMeses   Int?
+  talento         String?
+  documentoUrl    String?
+  renovacionDeId  String?        @unique
+  renovacionDe    Contrato?      @relation("Renovacion", fields: [renovacionDeId], references: [id])
+  renovacion      Contrato?      @relation("Renovacion")
+  notas           String?
+  observaciones   String?        // contradicciones o datos por conciliar detectados en la importación
+  creadoEn        DateTime       @default(now())
+  actualizadoEn   DateTime       @updatedAt
+  hitos           HitoCobro[]
+  compromisos     Compromiso[]
+
+  @@index([directorId, estado])
+  @@index([marcaId])
+  @@index([vencimiento])
+}
+
+// Acción acordada con la marca (entregable) o seguimiento interno con fecha.
+model Compromiso {
+  id          String           @id @default(cuid())
+  contratoId  String
+  contrato    Contrato         @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  tipo        TipoCompromiso   @default(ENTREGABLE)
+  descripcion String
+  fecha       DateTime?
+  responsable String?
+  estado      EstadoCompromiso @default(PENDIENTE)
+  notas       String?
+  creadoEn    DateTime         @default(now())
+  actualizadoEn DateTime       @updatedAt
+
+  @@index([contratoId])
+  @@index([fecha])
+}
+
+// Hito de cobro: cada factura o pago previsto de un contrato.
+model HitoCobro {
+  id              String        @id @default(cuid())
+  contratoId      String
+  contrato        Contrato      @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  concepto        String
+  importe         Int
+  modalidad       Modalidad     @default(EFECTIVO)
+  fechaFacturar   DateTime?
+  fechaOrientativa String?      // texto libre cuando no hay fecha exacta ("Febrero 2027")
+  estadoFactura   EstadoFactura @default(POR_EMITIR)
+  folioFactura    String?
+  estadoPago      EstadoPago    @default(POR_COBRAR)
+  montoRecibido   Int           @default(0)
+  fechaPago       DateTime?
+  confirmado      Boolean       @default(false)
+  notas           String?
+  creadoEn        DateTime      @default(now())
+  actualizadoEn   DateTime      @updatedAt
+
+  @@index([contratoId])
+  @@index([fechaFacturar])
+  @@index([estadoPago])
+}
+
+// Regla de comisión fijada por el administrador general.
+// Se aplica la regla más específica vigente en la fecha del cobro:
+// director+marca+tipo > director+marca > director+tipo > director.
+model ReglaComision {
+  id            String        @id @default(cuid())
+  directorId    String
+  director      Director      @relation(fields: [directorId], references: [id])
+  marcaId       String?
+  marca         Marca?        @relation(fields: [marcaId], references: [id])
+  tipo          TipoContrato?
+  pctCasa       Decimal       @db.Decimal(6, 4) // retención de Estudio Sports antes de comisión
+  pctDirector   Decimal       @db.Decimal(6, 4) // comisión del director sobre el remanente
+  vigenteDesde  DateTime
+  vigenteHasta  DateTime?
+  notas         String?
+  creadoEn      DateTime      @default(now())
+
+  @@index([directorId, vigenteDesde])
+}
+
+// Comisión efectivamente pagada al director. La devengada se calcula; esta se registra.
+model PagoComision {
+  id          String    @id @default(cuid())
+  directorId  String
+  director    Director  @relation(fields: [directorId], references: [id])
+  contratoId  String?
+  concepto    String
+  monto       Int
+  modalidad   Modalidad @default(EFECTIVO)
+  fechaPago   DateTime?
+  confirmado  Boolean   @default(false)
+  notas       String?
+  creadoEn    DateTime  @default(now())
+
+  @@index([directorId])
+  @@index([contratoId])
+}
+
+model Bitacora {
+  id        String   @id @default(cuid())
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  accion    String   // crear, editar, eliminar, ingresar
+  entidad   String
+  entidadId String?
+  detalle   Json?
+  fecha     DateTime @default(now())
+
+  @@index([fecha])
+  @@index([entidad, entidadId])
+}

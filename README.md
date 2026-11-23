@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Estudio Sports · CRM comercial
 
-## Getting Started
+Portal de control comercial de Estudio Sports: marcas, contratos, compromisos con cada marca, calendario de facturación y cobro, comisiones calculadas y reportes para la dirección. Sustituye el control en hoja de cálculo.
 
-First, run the development server:
+Desarrollado por Magnolia Digital. Piloto con un director comercial; diseñado desde el primer día para operar con todos los directores y con la dirección general.
+
+## Principios del diseño
+
+- **Permisos a nivel de fila.** Un director ve y captura únicamente su cartera. El administrador general ve todo, consolidado y por director.
+- **La comisión se calcula, nunca se captura.** Comisión = cobrado × (1 − retención de la casa) × porcentaje del director, con la regla vigente en la fecha del cobro. Solo el administrador general fija reglas; los directores las ven.
+- **Dato confirmado contra dato heredado.** Cada contrato, hito de cobro y pago lleva la bandera `confirmado`. Lo que viene del archivo anterior sin respaldo documental se muestra como «por confirmar» y no suma a la comisión devengada confirmada.
+- **Todo queda en bitácora.** Ingresos, altas, cambios y bajas, con usuario y fecha.
+- **Sin versión pública.** Toda ruta exige sesión; el sitio se declara no indexable.
+
+## Roles
+
+| Rol | Alcance |
+|---|---|
+| Administrador general | Todo: consolidado, tablero, directores, carteras, reglas de comisión, usuarios, bitácora, pagos de comisión. |
+| Director comercial | Solo su cartera: marcas, contratos, compromisos, hitos y pagos. Ve sus comisiones. No edita reglas ni asignaciones. |
+| Administración | Facturas y cobros de todas las carteras. No ve comisiones. |
+| Lectura | Consulta el consolidado sin editar. |
+
+## Módulos
+
+Hoy (vencidos y próximos 30 días) · Marcas y contactos · Contratos con línea de tiempo, hitos de cobro y compromisos · Calendario de dos capas con exportación ICS · Cobranza por antigüedad · Comisiones · Reportes (informe de dirección e informe consolidado, imprimibles en PDF) · Tablero · Directores y carteras · Reglas de comisión · Usuarios · Bitácora · Exportación CSV.
+
+## Stack
+
+Next.js 16 (App Router, acciones de servidor) · TypeScript · Tailwind 4 · Prisma 6 · PostgreSQL (Neon en producción) · sesión firmada con `jose` en cookie `httpOnly` · contraseñas con `bcrypt`. Gráficas en SVG sin dependencias.
+
+## Puesta en marcha local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env        # DATABASE_URL y SESSION_SECRET (mínimo 32 caracteres)
+pnpm db:push                 # crea el esquema
+pnpm db:seed                 # carga inicial (ver abajo)
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`pnpm db:reset` borra y vuelve a cargar la semilla.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Carga inicial (semilla)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`prisma/seed.ts` transcribe el archivo «CRM Comercial Estudio Sport» (corte 23 de noviembre de 2026) tal cual, con sus contradicciones anotadas en `observaciones` de cada contrato y las banderas `confirmado` en falso donde el archivo no tiene respaldo. Incluye una **dirección de demostración** con datos ficticios para mostrar el consolidado; se elimina desde Directores.
 
-## Learn More
+Usuarios iniciales: `admin`, `miguel`, `demo`. Las contraseñas se toman de `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL` y `SEED_CLAVE_DEMO`; sin esas variables se usan valores por defecto de desarrollo que deben cambiarse en el primer ingreso (Mi cuenta → Cambiar contraseña).
 
-To learn more about Next.js, take a look at the following resources:
+## Despliegue
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Base de datos en Neon; copiar la cadena de conexión a `DATABASE_URL`.
+2. Proyecto en Vercel ligado al repositorio, con `DATABASE_URL` y `SESSION_SECRET` como variables de entorno.
+3. `pnpm prisma db push` contra la base de producción y `pnpm db:seed` con las variables `SEED_CLAVE_*` definidas.
+4. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Pendientes de la siguiente fase
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Envío automático de informes por correo · carga de documentos firmados · alertas por correo a 90/60/30 días · alta de los demás directores y de los socios · migración de cuentas a Estudio Sports.

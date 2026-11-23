@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
+/* Paleta institucional neutra. Sin marca gráfica hasta que Estudio Sports entregue la suya. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --fondo: #f6f5f2;
+  --superficie: #ffffff;
+  --superficie-2: #efede8;
+  --tinta: #1a1a1a;
+  --tinta-2: #4a4a48;
+  --tinta-3: #7a7976;
+  --linea: #dcd9d1;
+  --linea-fuerte: #b9b5aa;
+  --acento: #1f3a5f; /* azul institucional */
+  --acento-suave: #e4ebf4;
+  --ok: #2f6b3a;
+  --ok-suave: #e4efe6;
+  --alerta: #8a5a00;
+  --alerta-suave: #f6ecd6;
+  --riesgo: #8b2c2c;
+  --riesgo-suave: #f5e3e3;
+  --neutro-suave: #ecebe7;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-tinta: var(--tinta);
+  --color-tinta-2: var(--tinta-2);
+  --color-tinta-3: var(--tinta-3);
+  --color-linea: var(--linea);
+  --color-linea-fuerte: var(--linea-fuerte);
+  --color-acento: var(--acento);
+  --color-acento-suave: var(--acento-suave);
+  --color-ok: var(--ok);
+  --color-ok-suave: var(--ok-suave);
+  --color-alerta: var(--alerta);
+  --color-alerta-suave: var(--alerta-suave);
+  --color-riesgo: var(--riesgo);
+  --color-riesgo-suave: var(--riesgo-suave);
+  --color-neutro-suave: var(--neutro-suave);
+  --font-sans: "Helvetica Neue", Helvetica, Arial, "Segoe UI", system-ui, sans-serif;
+  --font-serif: Georgia, "Times New Roman", Times, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-size: 15px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+
+/* Cifras alineadas en tablas */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Campos de formulario */
+.campo {
+  @apply w-full rounded border border-linea bg-superficie px-3 py-2 text-[15px] text-tinta outline-none focus:border-acento focus:ring-2 focus:ring-acento-suave;
+}
+.campo:disabled {
+  @apply bg-superficie-2 text-tinta-3;
+}
+
+/* Impresión de reportes */
+@media print {
+  @page { size: A4; margin: 16mm; }
+  body { background: #fff; }
+  .no-imprimir { display: none !important; }
+  .salto { break-before: page; }
+  a { text-decoration: none; color: inherit; }
 }

@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
+// Portal transaccional con sesión por cookie: todas las vistas son dinámicas.
+// No se activan cacheComponents ni partialPrefetching para evitar caché
+// accidental de datos financieros entre usuarios.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  reactStrictMode: true,
   turbopack: {
     rules: {
       "*.css": {
