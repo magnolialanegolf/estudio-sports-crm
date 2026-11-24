@@ -2,12 +2,13 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { esProduccion, requerirSesion } from "@/lib/acceso";
 import { etiqueta } from "@/lib/formato";
-import { Boton, Definicion, Pagina, Tarjeta } from "@/components/ui";
+import { Aviso, Boton, Definicion, Pagina, Tarjeta } from "@/components/ui";
 import { FormularioClave } from "./formulario";
 import { desactivarLigaCalendario, renovarLigaCalendario } from "@/actions/calendario";
 
-export default async function Cuenta() {
+export default async function Cuenta({ searchParams }: { searchParams: Promise<{ cambiar?: string }> }) {
   const s = await requerirSesion();
+  const { cambiar } = await searchParams;
   const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { icsToken: true } });
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
@@ -16,6 +17,11 @@ export default async function Cuenta() {
 
   return (
     <Pagina titulo="Mi cuenta">
+      {cambiar || s.debeCambiarClave ? (
+        <div className="mb-5">
+          <Aviso tono="alerta">Estás usando una contraseña inicial. Cámbiala aquí para poder usar el portal.</Aviso>
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Tarjeta titulo="Datos de acceso">
           <Definicion

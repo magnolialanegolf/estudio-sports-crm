@@ -18,6 +18,13 @@ export async function proxy(req: NextRequest) {
     url.search = pathname !== "/" ? `?destino=${encodeURIComponent(pathname)}` : "";
     return NextResponse.redirect(url);
   }
+  // Contraseña inicial: obliga a cambiarla antes de usar el portal.
+  if (sesion?.debeCambiarClave && pathname !== "/cuenta" && !pathname.startsWith("/api/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/cuenta";
+    url.search = "?cambiar=1";
+    return NextResponse.redirect(url);
+  }
   // Producción solo entra a sus tareas y a su cuenta.
   if (sesion?.rol === "PRODUCCION" && !["/tareas", "/cuenta", "/api/"].some((p) => pathname === p || pathname.startsWith(p))) {
     const url = req.nextUrl.clone();

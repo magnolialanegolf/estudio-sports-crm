@@ -43,10 +43,12 @@ export async function ingresar(_prev: EstadoIngreso, formData: FormData): Promis
     nombre: u.nombre,
     rol: u.rol,
     directorId: u.directorId,
+    debeCambiarClave: u.debeCambiarClave,
   });
   await db.usuario.update({ where: { id: u.id }, data: { ultimoAcceso: new Date() } });
   await registrar({ usuarioId: u.id, accion: "ingresar", entidad: "sesion", detalle: { exito: true } });
 
+  if (u.debeCambiarClave) redirect("/cuenta?cambiar=1");
   const destino = datos.data.destino && datos.data.destino.startsWith("/") && !datos.data.destino.startsWith("//") ? datos.data.destino : "/";
   redirect(destino);
 }
@@ -79,7 +81,9 @@ export async function cambiarContrasena(_prev: EstadoClave, formData: FormData):
   if (!datos.success) return { error: datos.error.issues[0]?.message ?? "Datos inválidos." };
   const u = await db.usuario.findUnique({ where: { id: s.usuarioId } });
   if (!u || !(await bcrypt.compare(datos.data.actual, u.passwordHash))) return { error: "La contraseña actual no es correcta." };
-  await db.usuario.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(datos.data.nueva, 12) } });
+  if (datos.data.nueva === datos.data.actual) return { error: "La nueva contraseña debe ser distinta de la actual." };
+  await db.usuario.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(datos.data.nueva, 12), debeCambiarClave: false } });
   await registrar({ usuarioId: u.id, accion: "contraseña", entidad: "usuario", entidadId: u.id });
+  await establecerCookieSesion({ ...s, debeCambiarClave: false });
   return { ok: true };
 }

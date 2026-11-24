@@ -81,6 +81,7 @@ model Usuario {
   directorId   String?
   director     Director? @relation(fields: [directorId], references: [id])
   activo       Boolean   @default(true)
+  debeCambiarClave Boolean @default(false) // obliga a cambiar la contraseña al ingresar
   creadoEn     DateTime  @default(now())
   ultimoAcceso DateTime?
   icsToken     String?   // liga privada del calendario personal

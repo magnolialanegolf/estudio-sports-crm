@@ -12,6 +12,7 @@ export type Sesion = {
   nombre: string;
   rol: Rol;
   directorId: string | null;
+  debeCambiarClave?: boolean;
 };
 
 function secreto() {
@@ -42,6 +43,7 @@ export async function leerSesion(token: string | undefined): Promise<Sesion | nu
       nombre: p.nombre ?? "",
       rol: p.rol,
       directorId: p.directorId ?? null,
+      debeCambiarClave: p.debeCambiarClave === true,
     };
   } catch {
     return null;

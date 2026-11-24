@@ -162,13 +162,14 @@ export async function guardarUsuario(id: string | null, _prev: Resultado, fd: Fo
       if (d.clave && d.clave.length > 0) {
         if (d.clave.length < 12) return { error: "La contraseña debe tener al menos 12 caracteres." };
         data.passwordHash = await bcrypt.hash(d.clave, 12);
+        data.debeCambiarClave = true;
       }
       await db.usuario.update({ where: { id }, data });
       await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "usuario", entidadId: id, detalle: { usuario: d.usuario, rol: d.rol, activo: d.activo, claveCambiada: Boolean(d.clave) } });
     } else {
       if (!d.clave || d.clave.length < 12) return { error: "La contraseña inicial debe tener al menos 12 caracteres." };
       const u = await db.usuario.create({
-        data: { usuario: d.usuario, nombre: d.nombre, correo: d.correo, rol: d.rol, directorId, activo: true, passwordHash: await bcrypt.hash(d.clave, 12) },
+        data: { usuario: d.usuario, nombre: d.nombre, correo: d.correo, rol: d.rol, directorId, activo: true, passwordHash: await bcrypt.hash(d.clave, 12), debeCambiarClave: true },
       });
       await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "usuario", entidadId: u.id, detalle: { usuario: d.usuario, rol: d.rol } });
     }
