@@ -23,9 +23,9 @@ export async function analizarDocumento(documentoId: string): Promise<Resultado>
   if (!d || !autorizaContrato(s, d.contrato)) return { error: "Documento no disponible." };
   if (d.tipoMime !== "application/pdf") return { error: "Solo se analizan documentos PDF." };
   try {
-    const propuesta = await analizarContratoPdf(Buffer.from(d.contenido), { marca: d.contrato.marca.nombre, proyecto: d.contrato.proyecto });
+    const { propuesta, uso } = await analizarContratoPdf(Buffer.from(d.contenido), { marca: d.contrato.marca.nombre, proyecto: d.contrato.proyecto });
     await db.contrato.update({ where: { id: d.contrato.id }, data: { propuestaIa: propuesta as unknown as Prisma.InputJsonValue, propuestaIaEn: new Date() } });
-    await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "contrato", entidadId: d.contrato.id, detalle: { lectorIa: "propuesta generada", documento: d.nombre, entregables: propuesta.entregables.length } });
+    await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "contrato", entidadId: d.contrato.id, detalle: { lectorIa: "propuesta generada", documento: d.nombre, entregables: propuesta.entregables.length, tokensEntrada: uso.tokensEntrada, tokensSalida: uso.tokensSalida, costoUsd: uso.costoUsd } });
     revalidatePath(`/contratos/${d.contrato.id}`);
     return { ok: true };
   } catch (e) {

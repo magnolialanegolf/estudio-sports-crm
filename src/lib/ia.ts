@@ -53,7 +53,13 @@ Reglas:
 - Cada entregable repetido (por ejemplo "cuatro menciones mensuales") va como un solo entregable con cantidad y periodicidad.
 - Fechas siempre en AAAA-MM-DD.`;
 
-export async function analizarContratoPdf(pdf: Buffer, contexto: { marca?: string | null; proyecto?: string | null }): Promise<PropuestaIa> {
+export type UsoLector = { tokensEntrada: number; tokensSalida: number; costoUsd: number };
+
+// Precio de lista de claude-opus-5-5: 4 USD por millón de tokens de entrada, 20 por millón de salida.
+const PRECIO_ENTRADA_USD = 4 / 1_000_000;
+const PRECIO_SALIDA_USD = 20 / 1_000_000;
+
+export async function analizarContratoPdf(pdf: Buffer, contexto: { marca?: string | null; proyecto?: string | null }): Promise<{ propuesta: PropuestaIa; uso: UsoLector }> {
   if (!iaConfigurada()) throw new Error("El lector de contratos no está configurado (falta ANTHROPIC_API_KEY).");
   const client = new Anthropic();
   const respuesta = await client.messages.parse({
@@ -76,5 +82,8 @@ export async function analizarContratoPdf(pdf: Buffer, contexto: { marca?: strin
   });
   if (respuesta.stop_reason === "refusal") throw new Error("El modelo declinó analizar este documento.");
   if (!respuesta.parsed_output) throw new Error("No se pudo interpretar la respuesta del lector.");
-  return respuesta.parsed_output;
+  const tokensEntrada = respuesta.usage.input_tokens;
+  const tokensSalida = respuesta.usage.output_tokens;
+  const costoUsd = Math.round((tokensEntrada * PRECIO_ENTRADA_USD + tokensSalida * PRECIO_SALIDA_USD) * 10000) / 10000;
+  return { propuesta: respuesta.parsed_output, uso: { tokensEntrada, tokensSalida, costoUsd } };
 }
