@@ -68,6 +68,16 @@ enum TipoCompromiso {
   FECHA_CLAVE
 }
 
+// Cadena interna de un entregable: producción graba, edición edita, comercial publica y cobra.
+enum EtapaEntregable {
+  POR_AUTORIZAR
+  POR_PRODUCIR
+  GRABADO
+  EN_EDICION
+  EDITADO
+  PUBLICADO
+}
+
 enum EstadoCompromiso {
   PENDIENTE
   EN_CURSO
@@ -93,6 +103,8 @@ model Usuario {
   bitacora     Bitacora[]
   compromisosAsignados Compromiso[] @relation("Asignacion")
   compromisosCreados   Compromiso[] @relation("Creacion")
+  compromisosEditados  Compromiso[] @relation("Edicion")
+  avances              AvanceCompromiso[]
   documentos   Documento[]
   avisos       Aviso[]
   incidenciasReportadas Incidencia[] @relation("IncidenciasReportadas")
@@ -214,6 +226,17 @@ model Compromiso {
   creadoPorId String?
   creadoPor   Usuario?         @relation("Creacion", fields: [creadoPorId], references: [id])
   estado      EstadoCompromiso @default(PENDIENTE)
+  etapa       EtapaEntregable  @default(POR_PRODUCIR) // solo aplica a ENTREGABLE
+  etapaDesde  DateTime         @default(now())        // desde cuándo está en la etapa actual
+  editorId    String?
+  editor      Usuario?         @relation("Edicion", fields: [editorId], references: [id])
+  grabadoEn   DateTime?
+  editadoEn   DateTime?
+  publicadoEn DateTime?
+  liga        String?          // dónde quedó publicado o el material entregado
+  autorizadoEn DateTime?       // comercial autorizó la ejecución; antes, producción solo lo ve programado
+  autorizadoPorId String?
+  avances     AvanceCompromiso[]
   reporte     String?          // lo que informa quien ejecuta la tarea
   cumplidoEn  DateTime?
   notas       String?
@@ -271,6 +294,21 @@ model HitoCobro {
 // Regla de comisión fijada por el administrador general.
 // Se aplica la regla más específica vigente en la fecha del cobro:
 // director+marca+tipo > director+marca > director+tipo > director.
+// Traspasos de un entregable entre etapas: quién, cuándo y con qué nota.
+model AvanceCompromiso {
+  id           String          @id @default(cuid())
+  compromisoId String
+  compromiso   Compromiso      @relation(fields: [compromisoId], references: [id], onDelete: Cascade)
+  usuarioId    String?
+  usuario      Usuario?        @relation(fields: [usuarioId], references: [id])
+  deEtapa      EtapaEntregable
+  aEtapa       EtapaEntregable
+  nota         String?
+  fecha        DateTime        @default(now())
+
+  @@index([compromisoId, fecha])
+}
+
 model ReglaComision {
   id            String        @id @default(cuid())
   directorId    String

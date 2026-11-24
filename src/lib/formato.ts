@@ -100,6 +100,14 @@ export const ETIQUETAS = {
     SEGUIMIENTO: "Seguimiento",
     FECHA_CLAVE: "Fecha clave",
   },
+  etapaEntregable: {
+    POR_AUTORIZAR: "Por autorizar",
+    POR_PRODUCIR: "Por producir",
+    GRABADO: "Grabado",
+    EN_EDICION: "En edición",
+    EDITADO: "Editado",
+    PUBLICADO: "Publicado",
+  },
   estadoCompromiso: {
     PENDIENTE: "Pendiente",
     EN_CURSO: "En curso",

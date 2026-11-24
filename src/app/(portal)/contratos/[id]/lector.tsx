@@ -111,6 +111,7 @@ export function PanelPropuesta({ contratoId, propuesta, fechaPropuesta, tieneHit
           <Caja nombre="fechas" etiqueta={`Crear ${propuesta.fechasClave.length} fechas clave`} defecto={propuesta.fechasClave.length > 0} />
           <Caja nombre="hitos" etiqueta={`Crear ${propuesta.hitosCobro.length} hitos de cobro`} defecto={false} ayuda={tieneHitos ? "El contrato ya tiene hitos; no se crean." : "Quedan marcados por confirmar."} />
           <Seleccion nombre="asignadoAId" etiqueta="Asignar entregables a" opciones={asignables.map((u) => ({ valor: u.id, texto: u.nombre }))} vacio="Sin asignar" />
+          <Seleccion nombre="editorId" etiqueta="Editor de los entregables" opciones={asignables.filter((u) => ["CONTENIDOS", "PRODUCCION", "OPERATIVO"].includes(u.rol)).map((u) => ({ valor: u.id, texto: u.nombre }))} vacio="Sin editor" />
           {r?.error ? <p className="rounded border border-riesgo/30 bg-riesgo-suave px-3 py-2 text-sm text-riesgo">{r.error}</p> : null}
           <button type="submit" disabled={pendiente} className="inline-flex h-9 w-full items-center justify-center rounded-md border border-acento bg-acento text-sm font-medium text-white shadow-sm hover:bg-acento-2 disabled:opacity-60">
             {pendiente ? "Aplicando…" : "Aprobar y aplicar"}

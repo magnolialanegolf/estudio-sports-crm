@@ -5,6 +5,10 @@ import { esProduccion, filtroCompromisos, filtroContratosProduccion, requerirSes
 import { etiqueta, fecha, diasHasta, textoDias } from "@/lib/formato";
 import { Aviso, Cifra, Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { ReportarRapido } from "./paneles";
+import { BotonAvance } from "./avance";
+import { ChipEtapa } from "@/components/etapas";
+import { ACCION_SIGUIENTE, enCanchaDe, puedeMover, siguiente } from "@/lib/produccion";
+import { autorizaContrato, puedeCapturar } from "@/lib/acceso";
 
 // Tareas: compromisos con las marcas y seguimientos, vistos como trabajo por hacer.
 // Producción ve solo lo que tiene asignado y sin ningún dato económico.
@@ -31,8 +35,9 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
         ...(asignado ? { asignadoAId: asignado } : {}),
       },
       include: {
-        contrato: { select: { id: true, codigo: true, proyecto: true, marca: { select: { nombre: true } }, director: { select: { nombre: true } } } },
+        contrato: { select: { id: true, codigo: true, directorId: true, proyecto: true, marca: { select: { nombre: true } }, director: { select: { nombre: true } } } },
         asignadoA: { select: { id: true, nombre: true } },
+        editor: { select: { id: true, nombre: true } },
       },
       orderBy: [{ estado: "asc" }, { fecha: "asc" }],
     }),
@@ -127,6 +132,10 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
                 const d = diasHasta(t.fecha, hoy);
                 const abierta = t.estado === "PENDIENTE" || t.estado === "EN_CURSO" || t.estado === "REQUIERE_ATENCION";
                 const retrasada = abierta && d !== null && d < 0;
+                const cancha = enCanchaDe(t);
+                const sig = t.tipo === "ENTREGABLE" && abierta ? siguiente(t.etapa) : null;
+                const actor = { esComercial: !produccion && puedeCapturar(s) && autorizaContrato(s, t.contrato), esAsignado: t.asignadoAId === s.usuarioId, esEditor: t.editorId === s.usuarioId };
+                const puedeAvanzar = sig ? puedeMover(actor, t.etapa, sig) : false;
                 return (
                   <tr key={t.id} className="hover:bg-superficie-2">
                     <Td>
@@ -142,14 +151,17 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
                     </Td>
                     <Td className="text-tinta-2">
                       {t.asignadoA?.nombre ?? t.responsable ?? <span className="text-tinta-3">Sin asignar</span>}
-                      {produccion && t.asignadoAId !== s.usuarioId ? <div className="text-xs text-tinta-3">registrada por ti</div> : null}
+                      {t.editor ? <div className="text-xs text-tinta-3">Edita: {t.editor.nombre}</div> : null}
+                      {cancha ? <div className={`mt-0.5 text-xs font-medium ${cancha.sinAsignar ? "text-alerta" : "text-acento"}`}>En cancha de {cancha.quien}</div> : null}
+                      {produccion && t.asignadoAId !== s.usuarioId && t.editorId !== s.usuarioId ? <div className="text-xs text-tinta-3">registrada por ti</div> : null}
                     </Td>
                     {veTodo(s) ? <Td className="text-tinta-2">{t.contrato.director.nombre}</Td> : null}
                     <Td>
                       <Etiqueta tono={t.estado === "CUMPLIDO" ? "ok" : t.estado === "REQUIERE_ATENCION" ? "riesgo" : t.estado === "EN_CURSO" ? "acento" : t.estado === "CANCELADO" ? "neutro" : retrasada ? "riesgo" : "alerta"}>{retrasada ? "Retrasada" : etiqueta("estadoCompromiso", t.estado)}</Etiqueta>
+                      {t.tipo === "ENTREGABLE" && t.estado !== "CANCELADO" ? <div className="mt-1"><ChipEtapa etapa={t.etapa} /></div> : null}
                       {t.cumplidoEn ? <div className="text-xs text-tinta-3">{fecha(t.cumplidoEn)}</div> : null}
                     </Td>
-                    <Td>{abierta ? <ReportarRapido compromisoId={t.id} /> : null}</Td>
+                    <Td>{sig && puedeAvanzar ? <BotonAvance compromisoId={t.id} a={sig} texto={ACCION_SIGUIENTE[t.etapa]!} /> : abierta && t.tipo !== "ENTREGABLE" ? <ReportarRapido compromisoId={t.id} /> : null}</Td>
                   </tr>
                 );
               })}

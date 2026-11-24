@@ -204,6 +204,7 @@ const esquemaCompromiso = z.object({
   fecha: fechaOpcional(),
   responsable: texto(120),
   asignadoAId: texto(64),
+  editorId: texto(64),
   estado: z.enum(["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION", "CUMPLIDO", "CANCELADO"]),
   notas: texto(2000),
   // Repetición: genera N compromisos a partir de la fecha, cada semana, quincena o mes.
@@ -238,16 +239,21 @@ export async function guardarCompromiso(contratoId: string, compromisoId: string
   if (!parse.success) return { error: primerError(parse.error) };
   const { repetirCantidad, repetirCada, ...d } = parse.data;
   const asignadoAId = await asignableValido(d.asignadoAId);
-  const datos = { ...d, asignadoAId, cumplidoEn: d.estado === "CUMPLIDO" ? new Date() : null };
-  const texto = (n: number) => `${s.nombre} te asignó ${n > 1 ? `${n} tareas` : "una tarea"} en ${c.marca.nombre}: ${d.descripcion}`;
+  const editorId = await asignableValido(d.editorId);
+  const datos = { ...d, asignadoAId, editorId, cumplidoEn: d.estado === "CUMPLIDO" ? new Date() : null };
+  // Un entregable nuevo nace por autorizar: comercial lo libera a producción con un clic.
+  const etapaInicial = d.tipo === "ENTREGABLE" && d.estado !== "CUMPLIDO" ? { etapa: "POR_AUTORIZAR" as const } : {};
+  const textoEditor = (n: number) => `${s.nombre} te asignó la edición de ${n > 1 ? `${n} entregables` : "un entregable"} en ${c.marca.nombre}: ${d.descripcion}`;
+  const texto = (n: number) => `${s.nombre} te asignó ${n > 1 ? `${n} tareas` : "una tarea"} en ${c.marca.nombre}: ${d.descripcion}${d.tipo === "ENTREGABLE" ? " (pendiente de autorizar ejecución)" : ""}`;
 
   if (compromisoId) {
-    const actual = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { estado: true, cumplidoEn: true, asignadoAId: true } });
+    const actual = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { estado: true, cumplidoEn: true, asignadoAId: true, editorId: true } });
     await db.compromiso.update({
       where: { id: compromisoId, contratoId },
       data: { ...datos, cumplidoEn: d.estado === "CUMPLIDO" ? (actual?.cumplidoEn ?? new Date()) : null },
     });
     if (asignadoAId && asignadoAId !== actual?.asignadoAId) await notificar([asignadoAId], texto(1), `/tareas/${compromisoId}`, s.usuarioId);
+    if (editorId && editorId !== actual?.editorId) await notificar([editorId], textoEditor(1), `/tareas/${compromisoId}`, s.usuarioId);
     await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { contratoId, estado: d.estado, asignadoAId } });
   } else {
     const cantidad = repetirCantidad && repetirCada && d.fecha ? Math.min(Math.max(repetirCantidad, 1), 60) : 1;
@@ -267,11 +273,12 @@ export async function guardarCompromiso(contratoId: string, compromisoId: string
     const creados = await db.$transaction(
       fechas.map((fecha, i) =>
         db.compromiso.create({
-          data: { ...datos, contratoId, fecha, creadoPorId: s.usuarioId, descripcion: cantidad > 1 ? `${d.descripcion} (${i + 1} de ${cantidad})` : d.descripcion },
+          data: { ...datos, ...etapaInicial, contratoId, fecha, creadoPorId: s.usuarioId, descripcion: cantidad > 1 ? `${d.descripcion} (${i + 1} de ${cantidad})` : d.descripcion },
         }),
       ),
     );
     if (asignadoAId) await notificar([asignadoAId], texto(cantidad), `/tareas/${creados[0].id}`, s.usuarioId);
+    if (editorId) await notificar([editorId], textoEditor(cantidad), `/tareas/${creados[0].id}`, s.usuarioId);
     // Si producción crea una actividad, el director de la cartera se entera.
     if (produccion) await notificar(await responsablesDeContrato(c.directorId), `${s.nombre} registró una actividad en ${c.marca.nombre}: ${d.descripcion}`, `/tareas/${creados[0].id}`, s.usuarioId);
     await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "compromiso", entidadId: creados[0]?.id, detalle: { contratoId, cantidad, asignadoAId } });
@@ -313,7 +320,7 @@ export async function reportarCompromiso(compromisoId: string, _prev: Resultado,
   if (!k) return { error: "Tarea no encontrada." };
   // Producción: la tarea asignada o la actividad que ella misma creó. Comercial: su cartera.
   const autorizado = esProduccion(s)
-    ? k.asignadoAId === s.usuarioId || k.creadoPorId === s.usuarioId
+    ? k.asignadoAId === s.usuarioId || k.editorId === s.usuarioId || k.creadoPorId === s.usuarioId
     : puedeCapturar(s) && autorizaContrato(s, k.contrato);
   if (!autorizado) return { error: "Sin permiso sobre esta tarea." };
   const estado = String(fd.get("estado") ?? "");

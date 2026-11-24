@@ -76,13 +76,13 @@ export async function requerirComercial(): Promise<Sesion> {
 
 // Contratos que producción puede consultar como expediente: vigentes o con tareas suyas.
 export function filtroContratosProduccion(s: Sesion): Prisma.ContratoWhereInput {
-  return { OR: [{ estado: "VIGENTE" }, { compromisos: { some: { asignadoAId: s.usuarioId } } }] };
+  return { OR: [{ estado: "VIGENTE" }, { compromisos: { some: { OR: [{ asignadoAId: s.usuarioId }, { editorId: s.usuarioId }] } } }] };
 }
 
 // Filtro de compromisos según rol: producción solo los suyos.
 export function filtroCompromisos(s: Sesion): Prisma.CompromisoWhereInput {
   // Producción: lo que tiene asignado y las actividades que registró ella misma.
-  if (esProduccion(s)) return { OR: [{ asignadoAId: s.usuarioId }, { creadoPorId: s.usuarioId }] };
+  if (esProduccion(s)) return { OR: [{ asignadoAId: s.usuarioId }, { editorId: s.usuarioId }, { creadoPorId: s.usuarioId }] };
   return { contrato: filtroContratos(s) };
 }
 

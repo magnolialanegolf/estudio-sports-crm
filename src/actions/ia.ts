@@ -49,6 +49,7 @@ export async function aplicarPropuesta(contratoId: string, _prev: Resultado, fd:
   const aplicarFechas = fd.get("fechas") === "on";
   const aplicarHitos = fd.get("hitos") === "on" && c.hitos.length === 0;
   const asignadoAId = String(fd.get("asignadoAId") ?? "") || null;
+  const editorId = String(fd.get("editorId") ?? "") || null;
 
   const datos: Prisma.ContratoUpdateInput = { propuestaIa: Prisma.DbNull, propuestaIaEn: null };
   if (aplicarBrief) datos.brief = p.acuerdosContenido;
@@ -76,7 +77,7 @@ export async function aplicarPropuesta(contratoId: string, _prev: Resultado, fd:
           else if (e.periodicidad === "QUINCENA") f.setUTCDate(f.getUTCDate() + 15 * i);
           else if (e.periodicidad === "MES") f.setUTCMonth(f.getUTCMonth() + i);
         }
-        await db.compromiso.create({ data: { contratoId, tipo: "ENTREGABLE", descripcion, fecha: f, notas: e.detalle, asignadoAId, creadoPorId: s.usuarioId } });
+        await db.compromiso.create({ data: { contratoId, tipo: "ENTREGABLE", etapa: "POR_AUTORIZAR", descripcion, fecha: f, notas: e.detalle, asignadoAId, editorId, creadoPorId: s.usuarioId } });
         creados += 1;
       }
     }

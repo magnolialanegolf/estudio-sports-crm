@@ -20,7 +20,8 @@ const PRUEBA: { usuario: string; nombre: string; rol: Rol; cartera?: boolean }[]
   { usuario: "md-director", nombre: "Prueba Magnolia · Director", rol: "DIRECTOR", cartera: true },
   { usuario: "md-asistente", nombre: "Prueba Magnolia · Asistente", rol: "ASISTENTE_COMERCIAL", cartera: true },
   { usuario: "md-pagos", nombre: "Prueba Magnolia · Pagos", rol: "ADMINISTRACION" },
-  { usuario: "md-produccion", nombre: "Prueba Magnolia · Producción", rol: "PRODUCCION" },
+  { usuario: "md-contenidos", nombre: "Prueba Magnolia · Edición", rol: "CONTENIDOS" },
+    { usuario: "md-produccion", nombre: "Prueba Magnolia · Producción", rol: "PRODUCCION" },
   { usuario: "md-lectura", nombre: "Prueba Magnolia · Lectura", rol: "LECTURA" },
 ];
 

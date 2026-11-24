@@ -101,6 +101,14 @@ export function PanelCompromiso({ contratoId, compromiso, textoBoton, asignables
               vacio="Sin asignar"
               ayuda="La persona asignada lo ve en sus tareas y lo reporta."
             />
+            <Seleccion
+              nombre="editorId"
+              etiqueta="Editor (edición de contenido)"
+              valor={compromiso?.editorId}
+              opciones={asignables.filter((u) => u.rol === "CONTENIDOS" || u.rol === "PRODUCCION" || u.rol === "OPERATIVO").map((u) => ({ valor: u.id, texto: `${u.nombre} · ${etiquetaRol[u.rol] ?? u.rol}` }))}
+              vacio="Sin editor"
+              ayuda="Recibe el material grabado y avisa cuando la edición está lista."
+            />
             <Entrada nombre="responsable" etiqueta="Responsable externo (texto)" valor={compromiso?.responsable} placeholder="Talento, agencia, la marca…" />
             {!compromiso ? (
               <div className="grid grid-cols-2 gap-3 rounded border border-linea bg-superficie-2 p-3 sm:col-span-2">

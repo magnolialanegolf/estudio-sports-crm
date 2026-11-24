@@ -33,7 +33,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
       : [],
     verAcciones
       ? db.compromiso.findMany({
-          where: { ...(produccion ? filtroCompromisos(s) : { contrato: filtro }), fecha: { gte: desde, lte: hasta } },
+          where: { ...(produccion ? { ...filtroCompromisos(s), etapa: { not: "POR_AUTORIZAR" } } : { contrato: filtro }), fecha: { gte: desde, lte: hasta } },
           include: { contrato: { select: { id: true, marca: { select: { nombre: true } } } } },
         })
       : [],

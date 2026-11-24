@@ -30,6 +30,20 @@ Hoy (vencidos y próximos 30 días) · Marcas y contactos · Contratos con líne
 
 Los documentos (PDF, PNG, JPG hasta 10 MB) se guardan en la base durante el piloto; con volumen alto se migran a almacenamiento de objetos.
 
+## Cadena de producción
+
+Cada entregable de un contrato recorre seis etapas con un responsable claro en cada una, y cada traspaso avisa a quien sigue y queda en el historial:
+
+| Etapa | En cancha de | Quién la mueve |
+|---|---|---|
+| Por autorizar | Comercial | El director autoriza la ejecución (uno por uno o toda la serie). Hasta entonces, producción lo ve programado pero no en su calendario. |
+| Por producir | Producción (asignado) | Marca grabado. |
+| Grabado / En edición | Edición (editor) | Toma para edición y marca edición lista, con liga del material. |
+| Editado | Comercial | Publica o entrega; el entregable queda cumplido. |
+| Publicado | — | Cierra. Si con él quedan completos los entregables del mes, comercial y dirección reciben «procede facturar» con el hito correspondiente. |
+
+Regresar una etapa exige motivo. La vista **Producción** muestra, para comercial y dirección, cada entregable abierto con etapa, en cancha de quién está, días en la etapa, retraso frente a la fecha con la marca y último movimiento o motivo. Las tareas autorizadas aparecen en el calendario personal de cada quien y en su liga de suscripción.
+
 ## Stack
 
 Next.js 16 (App Router, acciones de servidor) · TypeScript · Tailwind 4 · Prisma 6 · PostgreSQL (Neon en producción) · sesión firmada con `jose` en cookie `httpOnly` · contraseñas con `bcrypt`. Gráficas en SVG sin dependencias.

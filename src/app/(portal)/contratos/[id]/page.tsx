@@ -12,6 +12,8 @@ import { LineaTiempo } from "./linea-tiempo";
 import { PanelHito, PanelCompromiso, AccionesCompromiso, BorrarHito } from "./paneles";
 import { SubirDocumento, BorrarDocumento } from "./documentos";
 import { BotonAnalizar, PanelPropuesta } from "./lector";
+import { ChipEtapa } from "@/components/etapas";
+import { autorizarEntregables } from "@/actions/produccion";
 import { EsquemaPropuesta, iaConfigurada } from "@/lib/ia";
 import { PanelSolicitud, PanelPagoRecibido, Autorizar } from "@/app/(portal)/pagos/paneles";
 import { esAdmin, esDeCartera, puedeCobrar } from "@/lib/acceso";
@@ -25,7 +27,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
       marca: true,
       director: true,
       hitos: { orderBy: [{ fechaFacturar: "asc" }, { creadoEn: "asc" }], include: { documentos: { select: { id: true, categoria: true, nombre: true } } } },
-      compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }], include: { asignadoA: { select: { id: true, nombre: true } } } },
+      compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }], include: { asignadoA: { select: { id: true, nombre: true } }, editor: { select: { id: true, nombre: true } } } },
       renovacionDe: { select: { id: true, codigo: true, proyecto: true } },
       renovacion: { select: { id: true, codigo: true, proyecto: true, estado: true } },
       documentos: { where: { hitoId: null }, select: { id: true, nombre: true, categoria: true, tipoMime: true, tamano: true, descripcion: true, creadoEn: true, subidoPor: { select: { nombre: true } } }, orderBy: { creadoEn: "desc" } },
@@ -272,6 +274,15 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
               : "Entregables acordados con la marca, fechas clave y seguimientos internos"
           }
           className="xl:col-span-3"
+          acciones={
+            puedeEditar && entregables.some((k) => k.etapa === "POR_AUTORIZAR" && k.estado !== "CANCELADO") ? (
+              <form action={autorizarEntregables.bind(null, c.id)}>
+                <button type="submit" className="inline-flex h-8 items-center rounded-md border border-acento bg-acento px-3 text-xs font-medium text-white shadow-sm hover:bg-acento-2">
+                  Autorizar ejecución de {entregables.filter((k) => k.etapa === "POR_AUTORIZAR" && k.estado !== "CANCELADO").length} entregable(s)
+                </button>
+              </form>
+            ) : undefined
+          }
         >
           {entregables.length > 0 ? (
             <div className="mb-4 h-1.5 w-full overflow-hidden rounded bg-neutro-suave">
@@ -310,11 +321,13 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                       <Td className="text-tinta-2">
                         {k.asignadoA ? <span className="font-medium text-tinta">{k.asignadoA.nombre}</span> : k.responsable ?? <span className="text-tinta-3">Sin asignar</span>}
                         {k.asignadoA && k.responsable ? <div className="text-xs text-tinta-3">{k.responsable}</div> : null}
+                        {k.editor ? <div className="text-xs text-tinta-3">Edita: {k.editor.nombre}</div> : null}
                       </Td>
                       <Td>
                         <Etiqueta tono={k.estado === "CUMPLIDO" ? "ok" : k.estado === "REQUIERE_ATENCION" ? "riesgo" : k.estado === "EN_CURSO" ? "acento" : k.estado === "CANCELADO" ? "neutro" : abierto && d !== null && d < 0 ? "riesgo" : "alerta"}>
                           {abierto && d !== null && d < 0 ? "Retrasado" : etiqueta("estadoCompromiso", k.estado)}
                         </Etiqueta>
+                        {k.tipo === "ENTREGABLE" && k.estado !== "CANCELADO" ? <div className="mt-1"><ChipEtapa etapa={k.etapa} /></div> : null}
                         {k.cumplidoEn ? <div className="text-xs text-tinta-3">{fecha(k.cumplidoEn)}</div> : null}
                         {k.reporte ? <div className="mt-1 max-w-xs text-xs text-tinta-2" title={k.reporte}>Reporte: {k.reporte.length > 90 ? `${k.reporte.slice(0, 90)}…` : k.reporte}</div> : null}
                       </Td>

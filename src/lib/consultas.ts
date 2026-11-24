@@ -1,4 +1,5 @@
 import { fechaCobro } from "@/lib/formato";
+import { enCanchaDe, ETIQUETA_ETAPA } from "@/lib/produccion";
 import { addDays, addMonths, format, startOfDay, startOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { EstadoContrato, Prisma } from "@prisma/client";
@@ -82,7 +83,7 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
     }),
     db.compromiso.findMany({
       where: { contrato: filtro, OR: [{ estado: { in: ["PENDIENTE", "EN_CURSO"] }, fecha: { lte: limite } }, { estado: "REQUIERE_ATENCION" }] },
-      include: { contrato: { select: { id: true, codigo: true, marca: { select: { nombre: true } } } }, asignadoA: { select: { nombre: true } } },
+      include: { contrato: { select: { id: true, codigo: true, marca: { select: { nombre: true } }, director: { select: { nombre: true } } } }, asignadoA: { select: { nombre: true } }, editor: { select: { nombre: true } } },
       orderBy: { fecha: "asc" },
     }),
     db.contrato.findMany({
@@ -109,12 +110,21 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
   for (const k of compromisos) {
     const atencion = k.estado === "REQUIERE_ATENCION";
     const vencido = atencion || (!!k.fecha && k.fecha < hoy);
-    const quien = k.asignadoA ? k.asignadoA.nombre : k.responsable ?? "sin responsable";
+    const cancha = enCanchaDe(k);
+    const quien = cancha ? cancha.quien : k.asignadoA ? k.asignadoA.nombre : k.responsable ?? "sin responsable";
     alertas.push({
       tipo: vencido ? "compromiso_vencido" : "compromiso_proximo",
       gravedad: vencido ? "riesgo" : "neutro",
       titulo: `${k.contrato.marca.nombre} · ${k.descripcion}`,
-      detalle: atencion ? `Requiere atención · ${quien}${k.reporte ? ` · ${k.reporte.slice(0, 120)}` : ""}` : k.asignadoA ? `Responsable: ${k.asignadoA.nombre}${k.estado === "EN_CURSO" ? " · en curso" : ""}` : k.responsable ? `Responsable: ${k.responsable}` : "Sin responsable asignado",
+      detalle: atencion
+        ? `Requiere atención · ${quien}${k.reporte ? ` · ${k.reporte.split("\n").pop()?.slice(0, 120)}` : ""}`
+        : cancha
+          ? `${ETIQUETA_ETAPA[k.etapa]} · en cancha de ${cancha.quien}`
+          : k.asignadoA
+            ? `Responsable: ${k.asignadoA.nombre}${k.estado === "EN_CURSO" ? " · en curso" : ""}`
+            : k.responsable
+              ? `Responsable: ${k.responsable}`
+              : "Sin responsable asignado",
       fecha: k.fecha,
       href: `/tareas/${k.id}`,
     });

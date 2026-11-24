@@ -19,6 +19,7 @@ const PRINCIPAL: Enlace[] = [
   { href: "/pagos", texto: "Pagos", icono: "pagos" },
   { href: "/comisiones", texto: "Comisiones", icono: "comisiones" },
   { href: "/tareas", texto: "Tareas", icono: "tareas" },
+  { href: "/produccion", texto: "Producción", icono: "ok" },
   { href: "/incidencias", texto: "Incidencias", icono: "incidencias" },
   { href: "/reportes", texto: "Reportes", icono: "reportes" },
 ];

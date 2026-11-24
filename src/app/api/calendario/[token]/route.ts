@@ -19,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 
   const [compromisos, hitos, vencimientos] = await Promise.all([
     db.compromiso.findMany({
-      where: { ...filtroCompromisos(s), fecha: { not: null }, estado: { in: ["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION"] } },
+      where: { ...filtroCompromisos(s), ...(produccion ? { etapa: { not: "POR_AUTORIZAR" } } : {}), fecha: { not: null }, estado: { in: ["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION"] } },
       include: { contrato: { select: { proyecto: true, marca: { select: { nombre: true } } } }, asignadoA: { select: { nombre: true } } },
     }),
     produccion
