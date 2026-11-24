@@ -5,11 +5,13 @@ import { etiqueta } from "@/lib/formato";
 import { Aviso, Boton, Definicion, Pagina, Tarjeta } from "@/components/ui";
 import { FormularioClave } from "./formulario";
 import { desactivarLigaCalendario, renovarLigaCalendario } from "@/actions/calendario";
+import { PanelCorreo } from "./correo";
+import { correoConfigurado } from "@/lib/correo";
 
 export default async function Cuenta({ searchParams }: { searchParams: Promise<{ cambiar?: string }> }) {
   const s = await requerirSesion();
   const { cambiar } = await searchParams;
-  const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { icsToken: true } });
+  const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { icsToken: true, correo: true, avisosPorCorreo: true } });
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -36,6 +38,9 @@ export default async function Cuenta({ searchParams }: { searchParams: Promise<{
         </Tarjeta>
         <Tarjeta titulo="Cambiar contraseña" descripcion="Mínimo 12 caracteres.">
           <FormularioClave />
+        </Tarjeta>
+        <Tarjeta titulo="Avisos por correo" descripcion="Cada traspaso, asignación o autorización que te involucre.">
+          <PanelCorreo correo={u?.correo ?? null} activo={u?.avisosPorCorreo ?? true} configurado={correoConfigurado()} />
         </Tarjeta>
         <Tarjeta
           titulo="Mi calendario en el celular"

@@ -73,7 +73,8 @@ Usuarios iniciales: `admin`, `miguel`, `demo`, `produccion`. Las contraseñas se
 3. El comando de construcción aplica el esquema y carga la semilla solo si la base está vacía (`SEED_FORZAR=1` la recarga). Definir `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL` y `SEED_CLAVE_DEMO` antes del primer despliegue.
 4. Lector de contratos: `ANTHROPIC_API_KEY`. Cada lectura registra en bitácora sus tokens y su costo.
 5. Ingreso con Google Workspace: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_DOMINIOS`. La credencial se crea en Google Cloud (APIs y servicios → Credenciales → ID de cliente OAuth, tipo aplicación web) con la URI de retorno `https://<dominio>/api/auth/google/callback`. Google solo identifica: entra quien ya existe como usuario activo con ese correo y cuyo dominio está en la lista. El acceso por usuario y contraseña sigue disponible.
-6. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
+6. Avisos por correo: `RESEND_API_KEY`, `CORREO_REMITENTE` (dominio verificado en Resend) y `APP_URL`. Cada aviso de la campana se manda también por correo a quien tenga correo registrado y la opción activa en Mi cuenta. Sin estas variables, nada se envía y el portal funciona igual.
+7. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
 
 ## Pendientes de la siguiente fase
 
