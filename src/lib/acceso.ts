@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Prisma, Rol } from "@prisma/client";
-import { obtenerSesion, type Sesion } from "./sesion";
+import { cookies } from "next/headers";
+import { COOKIE_SESION, obtenerSesion, type Sesion } from "./sesion";
 
 // Reglas de acceso. Todo lo que toca datos pasa por aquí.
 
@@ -56,7 +57,12 @@ export function veComisiones(s: Sesion) {
 
 export async function requerirSesion(): Promise<Sesion> {
   const s = await obtenerSesion();
-  if (!s) redirect("/ingresar");
+  if (!s) {
+    // Cookie presente pero usuario dado de baja: se borra la cookie en una ruta y se explica.
+    const jar = await cookies();
+    if (jar.get(COOKIE_SESION)) redirect("/api/auth/salir?error=inactivo");
+    redirect("/ingresar");
+  }
   if (esDeCartera(s) && !s.directorId) redirect("/ingresar?error=sin-cartera");
   return s;
 }

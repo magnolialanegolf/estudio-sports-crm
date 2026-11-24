@@ -52,7 +52,13 @@ export async function leerSesion(token: string | undefined): Promise<Sesion | nu
 
 export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
   const jar = await cookies();
-  return leerSesion(jar.get(COOKIE_SESION)?.value);
+  const s = await leerSesion(jar.get(COOKIE_SESION)?.value);
+  if (!s) return null;
+  // La cookie prueba quién es; la base dice si sigue pudiendo entrar y con qué rol.
+  const { db } = await import("./db");
+  const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { activo: true, rol: true, directorId: true, nombre: true, debeCambiarClave: true } });
+  if (!u || !u.activo) return null;
+  return { ...s, rol: u.rol, directorId: u.directorId, nombre: u.nombre, debeCambiarClave: u.debeCambiarClave };
 });
 
 export async function establecerCookieSesion(sesion: Sesion) {

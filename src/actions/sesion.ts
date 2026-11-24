@@ -2,10 +2,15 @@
 
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
 import { borrarCookieSesion, establecerCookieSesion, obtenerSesion } from "@/lib/sesion";
+import { notificar } from "@/lib/avisos";
+
+const MAX_INTENTOS = 5;
+const VENTANA_MIN = 15;
 
 const esquemaIngreso = z.object({
   usuario: z.string().trim().min(1).max(64),
@@ -22,6 +27,13 @@ export async function ingresar(_prev: EstadoIngreso, formData: FormData): Promis
     destino: formData.get("destino") ?? undefined,
   });
   if (!datos.success) return { error: "Captura usuario y contraseña." };
+  const usuario = datos.data.usuario.toLowerCase();
+  const desde = new Date(Date.now() - VENTANA_MIN * 60_000);
+  const fallos = await db.intentoIngreso.count({ where: { usuario, fecha: { gte: desde } } });
+  if (fallos >= MAX_INTENTOS) {
+    await registrar({ usuarioId: null, accion: "ingresar", entidad: "sesion", detalle: { exito: false, usuario, motivo: "bloqueado por intentos" } });
+    return { error: `Demasiados intentos. Espera ${VENTANA_MIN} minutos o pide al administrador que te restablezca la contraseña.` };
+  }
 
   const u = await db.usuario.findUnique({
     where: { usuario: datos.data.usuario.toLowerCase() },
@@ -30,9 +42,17 @@ export async function ingresar(_prev: EstadoIngreso, formData: FormData): Promis
   // Mismo mensaje exista o no el usuario, para no revelar cuentas.
   const valido = u && u.activo && (await bcrypt.compare(datos.data.clave, u.passwordHash));
   if (!valido) {
-    await registrar({ usuarioId: u?.id ?? null, accion: "ingresar", entidad: "sesion", detalle: { exito: false, usuario: datos.data.usuario } });
+    const h = await headers();
+    const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || null;
+    await db.intentoIngreso.create({ data: { usuario, ip } });
+    await registrar({ usuarioId: u?.id ?? null, accion: "ingresar", entidad: "sesion", detalle: { exito: false, usuario, ip } });
+    if (fallos + 1 >= MAX_INTENTOS) {
+      const admins = await db.usuario.findMany({ where: { activo: true, rol: "ADMIN_GENERAL" }, select: { id: true } });
+      await notificar(admins.map((a) => a.id), `Acceso bloqueado ${VENTANA_MIN} min para «${usuario}» tras ${MAX_INTENTOS} contraseñas incorrectas${ip ? ` desde ${ip}` : ""}.`, "/bitacora");
+    }
     return { error: "Usuario o contraseña incorrectos." };
   }
+  await db.intentoIngreso.deleteMany({ where: { usuario } });
   if ((u.rol === "DIRECTOR" || u.rol === "ASISTENTE_COMERCIAL") && (!u.director || !u.director.activo)) {
     return { error: "La cuenta no tiene una dirección comercial activa asignada." };
   }

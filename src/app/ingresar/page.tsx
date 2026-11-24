@@ -6,6 +6,7 @@ import { IconoGoogle } from "./google";
 
 const ERRORES: Record<string, string> = {
   "sin-cartera": "La cuenta no tiene una cartera asignada.",
+  inactivo: "La cuenta está desactivada. Habla con el administrador.",
   "google-sin-usuario": "Tu cuenta de Google no está dada de alta en el portal. Pide al administrador que te registre con ese correo.",
   "google-dominio": "Solo pueden entrar cuentas de Google de la empresa.",
   "google-cancelado": "No se completó el ingreso con Google. Inténtalo de nuevo.",

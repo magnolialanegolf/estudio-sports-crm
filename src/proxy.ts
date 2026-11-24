@@ -28,7 +28,7 @@ export async function proxy(req: NextRequest) {
   }
   // Producción solo entra a sus tareas y a su cuenta.
   const ejecucion = sesion && ["PRODUCCION", "CONTENIDOS", "OPERATIVO"].includes(sesion.rol);
-  if (ejecucion && !["/tareas", "/cuenta", "/avisos", "/incidencias", "/api/"].some((p) => pathname === p || pathname.startsWith(p))) {
+  if (ejecucion && !["/tareas", "/cuenta", "/avisos", "/incidencias", "/calendario", "/api/"].some((p) => pathname === p || pathname.startsWith(p))) {
     const url = req.nextUrl.clone();
     url.pathname = "/tareas";
     url.search = "";

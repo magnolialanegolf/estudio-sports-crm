@@ -2,7 +2,7 @@ import Link from "next/link";
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, isToday, parse, startOfMonth, startOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { db } from "@/lib/db";
-import { filtroContratos, requerirSesion, veTodo } from "@/lib/acceso";
+import { esProduccion, filtroCompromisos, filtroContratos, requerirSesion, veTodo } from "@/lib/acceso";
 import { directoresVisibles } from "@/lib/consultas";
 import { dineroCorto, mesAnio } from "@/lib/formato";
 import { Boton, Pagina, Tarjeta } from "@/components/ui";
@@ -18,7 +18,9 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
   const finMes = endOfMonth(inicioMes);
   const desde = startOfWeek(inicioMes, { weekStartsOn: 1 });
   const hasta = endOfWeek(finMes, { weekStartsOn: 1 });
-  const verCobros = capa !== "acciones";
+  // Producción ve solo sus tareas con fecha: sin cobros ni vencimientos de contrato.
+  const produccion = esProduccion(s);
+  const verCobros = !produccion && capa !== "acciones";
   const verAcciones = capa !== "cobros";
   const filtro = directorId ? { directorId } : filtroContratos(s);
 
@@ -31,11 +33,11 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
       : [],
     verAcciones
       ? db.compromiso.findMany({
-          where: { contrato: filtro, fecha: { gte: desde, lte: hasta } },
+          where: { ...(produccion ? filtroCompromisos(s) : { contrato: filtro }), fecha: { gte: desde, lte: hasta } },
           include: { contrato: { select: { id: true, marca: { select: { nombre: true } } } } },
         })
       : [],
-    db.contrato.findMany({ where: { ...filtro, estado: "VIGENTE", vencimiento: { gte: desde, lte: hasta } }, select: { id: true, proyecto: true, marca: { select: { nombre: true } }, vencimiento: true } }),
+    produccion ? Promise.resolve([]) : db.contrato.findMany({ where: { ...filtro, estado: "VIGENTE", vencimiento: { gte: desde, lte: hasta } }, select: { id: true, proyecto: true, marca: { select: { nombre: true } }, vencimiento: true } }),
     global ? directoresVisibles(s) : Promise.resolve([]),
   ]);
 
@@ -48,7 +50,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
     porDia.get(k)!.push(e);
   };
   for (const h of hitos) agregar(h.fechaFacturar!, { tipo: "cobro", texto: `${h.contrato.marca.nombre} · ${h.concepto}`, href: `/contratos/${h.contrato.id}`, tono: h.estadoPago === "PAGADO" ? "ok" : "acento", monto: h.importe });
-  for (const k of compromisos) agregar(k.fecha!, { tipo: "accion", texto: `${k.contrato.marca.nombre} · ${k.descripcion}`, href: `/contratos/${k.contrato.id}`, tono: k.estado === "CUMPLIDO" ? "ok" : "alerta" });
+  for (const k of compromisos) agregar(k.fecha!, { tipo: "accion", texto: `${k.contrato.marca.nombre} · ${k.descripcion}`, href: produccion ? `/tareas/${k.id}` : `/contratos/${k.contrato.id}`, tono: k.estado === "CUMPLIDO" ? "ok" : k.estado === "REQUIERE_ATENCION" ? "riesgo" : "alerta" });
   for (const c of vencimientos) agregar(c.vencimiento!, { tipo: "vencimiento", texto: `Vence · ${c.marca.nombre} · ${c.proyecto}`, href: `/contratos/${c.id}`, tono: "riesgo" });
 
   const q = (m: Date, extra?: Record<string, string | undefined>) => {
@@ -73,7 +75,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
   return (
     <Pagina
       titulo="Calendario"
-      subtitulo={`Dos capas: acciones acordadas y cobros por facturar · ${dineroCorto(totalCobros)} MXN programados en ${mesAnio(inicioMes)}`}
+      subtitulo={produccion ? "Tus tareas con fecha. Suscríbelo en tu celular para recibirlas ahí." : `Dos capas: acciones acordadas y cobros por facturar · ${dineroCorto(totalCobros)} MXN programados en ${mesAnio(inicioMes)}`}
       acciones={
         <>
           {global ? <FiltroDirector directores={directores} actual={directorId} ruta="/calendario" extra={{ mes: format(inicioMes, "yyyy-MM"), capa }} /> : null}
@@ -89,7 +91,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
             <Link href={q(addMonths(inicioMes, 1))} className="rounded border border-linea-fuerte px-2.5 py-1 text-sm hover:bg-superficie-2" aria-label="Mes siguiente">→</Link>
             <Link href={q(new Date())} className="ml-2 text-xs text-acento hover:underline">Hoy</Link>
           </div>
-          <div className="flex gap-1 text-xs">
+          {produccion ? null : <div className="flex gap-1 text-xs">
             {[
               { v: undefined, t: "Ambas capas" },
               { v: "cobros", t: "Solo cobros" },
@@ -99,7 +101,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
                 {o.t}
               </Link>
             ))}
-          </div>
+          </div>}
         </div>
 
         <div className="grid grid-cols-7 border-l border-t border-linea text-xs">
@@ -126,10 +128,10 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
           })}
         </div>
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-tinta-2">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-acento" /> Cobro por facturar</span>
+          {produccion ? null : <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-acento" /> Cobro por facturar</span>}
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-ok" /> Cobrado o cumplido</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-alerta" /> Acción acordada</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-riesgo" /> Vencimiento de contrato</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-riesgo" /> {produccion ? "Requiere atención" : "Vencimiento de contrato"}</span>
         </div>
       </Tarjeta>
     </Pagina>

@@ -25,6 +25,7 @@ const PRINCIPAL: Enlace[] = [
 
 const PRODUCCION: Enlace[] = [
   { href: "/tareas", texto: "Mis tareas", icono: "tareas" },
+  { href: "/calendario", texto: "Calendario", icono: "calendario" },
   { href: "/incidencias", texto: "Incidencias", icono: "incidencias" },
   { href: "/avisos", texto: "Avisos", icono: "avisos" },
 ];
@@ -37,6 +38,7 @@ const ADMINISTRACION: Enlace[] = [
   { href: "/reglas", texto: "Reglas de comisión", icono: "reglas", roles: ["ADMIN_GENERAL"] },
   { href: "/usuarios", texto: "Usuarios", icono: "usuarios", roles: ["ADMIN_GENERAL"] },
   { href: "/bitacora", texto: "Bitácora", icono: "bitacora", roles: ["ADMIN_GENERAL"] },
+  { href: "/respaldo", texto: "Respaldo", icono: "bitacora", roles: ["ADMIN_GENERAL"] },
 ];
 
 function Enlace({ e, ruta, alNavegar }: { e: Enlace; ruta: string; alNavegar: () => void }) {

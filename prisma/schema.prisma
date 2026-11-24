@@ -306,6 +306,16 @@ model PagoComision {
   @@index([contratoId])
 }
 
+// Intentos fallidos de ingreso por usuario: tras cinco en quince minutos se bloquea el acceso.
+model IntentoIngreso {
+  id      String   @id @default(cuid())
+  usuario String
+  ip      String?
+  fecha   DateTime @default(now())
+
+  @@index([usuario, fecha])
+}
+
 model Bitacora {
   id        String   @id @default(cuid())
   usuarioId String?
