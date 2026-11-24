@@ -14,9 +14,11 @@ import { SubirDocumento, BorrarDocumento } from "./documentos";
 import { BotonAnalizar, PanelPropuesta } from "./lector";
 import { ChipEtapa } from "@/components/etapas";
 import { autorizarEntregables } from "@/actions/produccion";
+import { FormularioSeguimiento } from "./seguimiento";
+import { ListaSeguimiento } from "@/components/seguimiento";
 import { EsquemaPropuesta, iaConfigurada } from "@/lib/ia";
 import { PanelSolicitud, PanelPagoRecibido, Autorizar } from "@/app/(portal)/pagos/paneles";
-import { esAdmin, esDeCartera, puedeCobrar } from "@/lib/acceso";
+import { esAdmin, esDeCartera, esProduccion, puedeCobrar } from "@/lib/acceso";
 
 export default async function DetalleContrato({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
@@ -26,6 +28,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
     include: {
       marca: true,
       director: true,
+      seguimientos: { orderBy: { fecha: "desc" }, take: 50, include: { usuario: { select: { nombre: true } }, compromiso: { select: { id: true, estado: true } } } },
       hitos: { orderBy: [{ fechaFacturar: "asc" }, { creadoEn: "asc" }], include: { documentos: { select: { id: true, categoria: true, nombre: true } } } },
       compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }], include: { asignadoA: { select: { id: true, nombre: true } }, editor: { select: { id: true, nombre: true } } } },
       renovacionDe: { select: { id: true, codigo: true, proyecto: true } },
@@ -147,6 +150,11 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
               </>
             ) : null}
           </div>
+        </Tarjeta>
+
+        <Tarjeta titulo="Seguimiento" descripcion="Qué ha pasado con la marca: llamadas, reuniones, avances. Lo más reciente arriba." className="xl:col-span-3">
+          {puedeEditar && !esProduccion(s) ? <div className="mb-4"><FormularioSeguimiento contratoId={c.id} hoy={hoy.toISOString().slice(0, 10)} /></div> : null}
+          <ListaSeguimiento items={c.seguimientos} puedeEditar={puedeEditar && !esProduccion(s)} />
         </Tarjeta>
 
         <Tarjeta titulo="Línea de tiempo" descripcion="Vigencia, cobros y compromisos" className="xl:col-span-3">

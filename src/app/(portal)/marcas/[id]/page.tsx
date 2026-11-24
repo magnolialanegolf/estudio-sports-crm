@@ -5,6 +5,7 @@ import { filtroMarcas, puedeCapturar, requerirSesion, veTodo } from "@/lib/acces
 import { dinero, etiqueta, fecha } from "@/lib/formato";
 import { Boton, Definicion, Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { PanelContacto, BorrarContacto } from "./paneles";
+import { ListaSeguimiento } from "@/components/seguimiento";
 
 export default async function DetalleMarca({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
@@ -22,6 +23,12 @@ export default async function DetalleMarca({ params }: { params: Promise<{ id: s
     },
   });
   if (!m) notFound();
+  const seguimientos = await db.seguimiento.findMany({
+    where: { marcaId: m.id, contrato: veTodo(s) ? {} : { directorId: s.directorId! } },
+    include: { usuario: { select: { nombre: true } }, compromiso: { select: { id: true, estado: true } }, contrato: { select: { id: true, proyecto: true } } },
+    orderBy: { fecha: "desc" },
+    take: 15,
+  });
   const puedeEditar = puedeCapturar(s);
   const actual = m.carteras.find((c) => !c.hasta);
   const contratado = m.contratos.filter((c) => c.estado !== "CANCELADO").reduce((a, c) => a + (c.monto ?? 0), 0);
@@ -104,6 +111,9 @@ export default async function DetalleMarca({ params }: { params: Promise<{ id: s
           )}
         </Tarjeta>
 
+        <Tarjeta titulo="Seguimiento reciente" descripcion="Lo último que pasó con esta marca en cualquiera de sus contratos. Se registra desde cada contrato." className="xl:col-span-3">
+          <ListaSeguimiento items={seguimientos} puedeEditar={false} vacio="Sin seguimiento registrado para esta marca." />
+        </Tarjeta>
         <Tarjeta titulo="Contratos y propuestas" className="xl:col-span-3">
           {m.contratos.length === 0 ? (
             <Vacio>Sin contratos.</Vacio>

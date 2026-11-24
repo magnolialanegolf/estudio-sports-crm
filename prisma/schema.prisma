@@ -78,6 +78,15 @@ enum EtapaEntregable {
   PUBLICADO
 }
 
+// Seguimiento comercial: lo que pasó con la marca y lo que sigue.
+enum TipoSeguimiento {
+  LLAMADA
+  REUNION
+  CORREO
+  MENSAJE
+  NOTA
+}
+
 enum EstadoCompromiso {
   PENDIENTE
   EN_CURSO
@@ -111,6 +120,7 @@ model Usuario {
   incidenciasReportadas Incidencia[] @relation("IncidenciasReportadas")
   incidenciasAsignadas  Incidencia[] @relation("IncidenciasAsignadas")
   comentarios  ComentarioIncidencia[]
+  seguimientos Seguimiento[]
 
   @@index([icsToken])
 }
@@ -142,6 +152,7 @@ model Marca {
   contratos Contrato[]
   reglas    ReglaComision[]
   incidencias Incidencia[]
+  seguimientos Seguimiento[]
 }
 
 // Asignación Marca ↔ Director con vigencia. Una marca puede cambiar de manos.
@@ -157,6 +168,27 @@ model Cartera {
 
   @@index([directorId, hasta])
   @@index([marcaId, hasta])
+}
+
+model Seguimiento {
+  id             String          @id @default(cuid())
+  contratoId     String
+  contrato       Contrato        @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  marcaId        String
+  marca          Marca           @relation(fields: [marcaId], references: [id], onDelete: Cascade)
+  usuarioId      String?
+  usuario        Usuario?        @relation(fields: [usuarioId], references: [id])
+  tipo           TipoSeguimiento @default(NOTA)
+  fecha          DateTime        @default(now())
+  texto          String
+  siguientePaso  String?
+  siguienteFecha DateTime?
+  compromisoId   String?         @unique
+  compromiso     Compromiso?     @relation(fields: [compromisoId], references: [id], onDelete: SetNull)
+  creadoEn       DateTime        @default(now())
+
+  @@index([contratoId, fecha])
+  @@index([marcaId, fecha])
 }
 
 model Contacto {
@@ -220,6 +252,7 @@ model Contrato {
   compromisos     Compromiso[]
   documentos      Documento[]
   incidencias     Incidencia[]
+  seguimientos    Seguimiento[]
 
   @@index([directorId, estado])
   @@index([marcaId])
@@ -252,6 +285,7 @@ model Compromiso {
   autorizadoEn DateTime?       // comercial autorizó la ejecución; antes, producción solo lo ve programado
   autorizadoPorId String?
   avances     AvanceCompromiso[]
+  seguimiento Seguimiento?
   reporte     String?          // lo que informa quien ejecuta la tarea
   cumplidoEn  DateTime?
   notas       String?
