@@ -44,6 +44,11 @@ export function fechaISO(d: Date | null | undefined): string {
   return format(d, "yyyy-MM-dd");
 }
 
+// Fecha que manda para "atrasado": la requerida de pago si existe; si no, la de facturación.
+export function fechaCobro(h: { fechaVencimiento?: Date | null; fechaFacturar?: Date | null }): Date | null {
+  return h.fechaVencimiento ?? h.fechaFacturar ?? null;
+}
+
 export function diasHasta(d: Date | null | undefined, desde = new Date()): number | null {
   if (!d) return null;
   return differenceInCalendarDays(d, desde);

@@ -3,7 +3,7 @@ import { addDays, startOfDay } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { esAdmin, esDeCartera, filtroContratos, puedeCobrar, requerirComercial, veTodo } from "@/lib/acceso";
-import { dinero, etiqueta, fecha, diasHasta, textoDias } from "@/lib/formato";
+import { dinero, etiqueta, fecha, diasHasta, fechaCobro, textoDias } from "@/lib/formato";
 import { Aviso, Cifra, Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { Autorizar, PanelPagoRecibido, PanelSolicitud } from "./paneles";
 
@@ -33,7 +33,7 @@ function Docs({ h }: { h: HitoFila }) {
 }
 
 function Fila({ h, hoy, global, acciones }: { h: HitoFila; hoy: Date; global: boolean; acciones?: React.ReactNode }) {
-  const d = diasHasta(h.fechaFacturar, hoy);
+  const d = diasHasta(fechaCobro(h), hoy);
   const atrasado = h.estadoPago !== "PAGADO" && d !== null && d < 0;
   return (
     <tr>
@@ -44,6 +44,7 @@ function Fila({ h, hoy, global, acciones }: { h: HitoFila; hoy: Date; global: bo
       </Td>
       <Td>
         <div>{h.fechaFacturar ? fecha(h.fechaFacturar) : h.fechaOrientativa ?? "Sin fecha"}</div>
+        <div className="text-xs text-tinta-3">{h.fechaVencimiento ? `Pago requerido ${fecha(h.fechaVencimiento)}` : "Pago requerido: sin fijar"}</div>
         {h.estadoPago !== "PAGADO" ? <Etiqueta tono={atrasado ? "riesgo" : d !== null && d <= 7 ? "alerta" : "neutro"}>{atrasado ? `atrasado ${Math.abs(d!)} d` : textoDias(d)}</Etiqueta> : h.fechaPago ? <div className="text-xs text-tinta-3">pagado {fecha(h.fechaPago)}</div> : null}
       </Td>
       <Td derecha>{dinero(h.importe - h.montoRecibido || h.importe)}</Td>
@@ -53,7 +54,7 @@ function Fila({ h, hoy, global, acciones }: { h: HitoFila; hoy: Date; global: bo
       </Td>
       <Td>
         <div className="text-xs text-tinta-2">
-          {h.solicitadoEn ? <div>Solicitado {fecha(h.solicitadoEn)}</div> : <div className="text-tinta-3">Sin solicitar</div>}
+          {h.solicitadoEn ? <div>Solicitado {fecha(h.solicitadoEn)}{h.montoSolicitado && h.montoSolicitado < h.importe - h.montoRecibido ? <span className="tabular"> · {dinero(h.montoSolicitado)}</span> : null}</div> : <div className="text-tinta-3">Sin solicitar</div>}
           {h.autorizadoEn ? <div className="text-ok">Autorizado {fecha(h.autorizadoEn)}</div> : null}
           {h.estadoPago === "PAGADO" ? <Etiqueta tono="ok">Pagado</Etiqueta> : h.estadoPago === "PARCIAL" ? <Etiqueta tono="alerta">Pago parcial</Etiqueta> : null}
         </div>
@@ -68,7 +69,7 @@ function Encabezado() {
     <thead>
       <tr>
         <Th>Marca · concepto</Th>
-        <Th>Fecha</Th>
+        <Th>Facturación · pago requerido</Th>
         <Th derecha>Importe</Th>
         <Th>Factura y comprobante</Th>
         <Th>Flujo</Th>
@@ -103,7 +104,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const porAutorizar = pendientes.filter((h) => h.solicitadoEn && !h.autorizadoEn);
   const autorizados = pendientes.filter((h) => h.autorizadoEn);
   const pagados = hitos.filter((h) => h.estadoPago === "PAGADO").sort((a, b) => (b.fechaPago?.getTime() ?? 0) - (a.fechaPago?.getTime() ?? 0)).slice(0, 25);
-  const atrasados = pendientes.filter((h) => h.fechaFacturar && h.fechaFacturar < hoy);
+  const atrasados = pendientes.filter((h) => { const f = fechaCobro(h); return f !== null && f < hoy; });
 
   return (
     <Pagina titulo="Pagos" subtitulo="Programar → facturar y solicitar → autorización de dirección → registro del pago con comprobante">
@@ -139,7 +140,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
           {autorizados.length === 0 ? <Vacio>Sin cobros autorizados pendientes.</Vacio> : (
             <Tabla>
               <Encabezado />
-              <tbody>{autorizados.map((h) => <Fila key={h.id} h={h} hoy={hoy} global={veTodo(s)} acciones={pagos || esDeCartera(s) ? <PanelPagoRecibido hitoId={h.id} pendiente={h.importe - h.montoRecibido} /> : null} />)}</tbody>
+              <tbody>{autorizados.map((h) => <Fila key={h.id} h={h} hoy={hoy} global={veTodo(s)} acciones={pagos || esDeCartera(s) ? <PanelPagoRecibido hitoId={h.id} pendiente={h.importe - h.montoRecibido} solicitado={h.montoSolicitado} /> : null} />)}</tbody>
             </Tabla>
           )}
         </Tarjeta>
@@ -152,7 +153,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
           {programados.length === 0 ? <Vacio>Sin cobros programados pendientes.</Vacio> : (
             <Tabla>
               <Encabezado />
-              <tbody>{programados.map((h) => <Fila key={h.id} h={h} hoy={hoy} global={veTodo(s)} acciones={!pagos || admin ? <PanelSolicitud hitoId={h.id} fechaFacturar={h.fechaFacturar} folio={h.folioFactura} /> : null} />)}</tbody>
+              <tbody>{programados.map((h) => <Fila key={h.id} h={h} hoy={hoy} global={veTodo(s)} acciones={!pagos || admin ? <PanelSolicitud hitoId={h.id} marca={h.contrato.marca.nombre} concepto={h.concepto} importe={h.importe} pendiente={h.importe - h.montoRecibido} fechaFacturar={h.fechaFacturar} fechaVencimiento={h.fechaVencimiento} folio={h.folioFactura} /> : null} />)}</tbody>
             </Tabla>
           )}
         </Tarjeta>

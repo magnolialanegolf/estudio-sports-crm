@@ -2,7 +2,7 @@ import Link from "next/link";
 import { startOfDay } from "date-fns";
 import { requerirSesion, veTodo } from "@/lib/acceso";
 import { antiguedad, directoresVisibles, hitosVisibles } from "@/lib/consultas";
-import { dinero, etiqueta, fecha, diasHasta, textoDias } from "@/lib/formato";
+import { dinero, etiqueta, fecha, diasHasta, fechaCobro, textoDias } from "@/lib/formato";
 import { Boton, Cifra, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { FiltroDirector } from "@/components/filtro-director";
 import { Barras } from "@/components/graficas";
@@ -63,7 +63,7 @@ export default async function Cobranza({ searchParams }: { searchParams: Promise
               </thead>
               <tbody>
                 {pendientes.map((h) => {
-                  const dias = diasHasta(h.fechaFacturar, hoy);
+                  const dias = diasHasta(fechaCobro(h), hoy);
                   const tono = dias === null ? "neutro" : dias < 0 ? "riesgo" : dias <= 30 ? "alerta" : "neutro";
                   return (
                     <tr key={h.id} className="hover:bg-superficie-2">
@@ -77,6 +77,7 @@ export default async function Cobranza({ searchParams }: { searchParams: Promise
                       {global ? <Td className="text-tinta-2">{h.contrato.director.nombre}</Td> : null}
                       <Td>
                         <div>{h.fechaFacturar ? fecha(h.fechaFacturar) : h.fechaOrientativa ?? "Sin fecha"}</div>
+                        {h.fechaVencimiento ? <div className="text-xs text-tinta-3">Pago requerido {fecha(h.fechaVencimiento)}</div> : null}
                         <Etiqueta tono={tono}>{textoDias(dias)}</Etiqueta>
                       </Td>
                       <Td className="text-tinta-2">{etiqueta("estadoFactura", h.estadoFactura)}</Td>

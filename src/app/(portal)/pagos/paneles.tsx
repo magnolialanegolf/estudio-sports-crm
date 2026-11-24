@@ -4,6 +4,7 @@ import { useState } from "react";
 import { autorizarCobro, registrarPagoCobro, solicitarAutorizacion } from "@/actions/cobros";
 import { Formulario } from "@/components/formularios";
 import { Entrada, Fecha } from "@/components/campos";
+import { dinero } from "@/lib/formato";
 
 function Dialogo({ titulo, abierto, cerrar, children }: { titulo: string; abierto: boolean; cerrar: () => void; children: React.ReactNode }) {
   if (!abierto) return null;
@@ -23,17 +24,39 @@ function Dialogo({ titulo, abierto, cerrar, children }: { titulo: string; abiert
 const boton = "no-imprimir rounded border px-2.5 py-1 text-xs font-medium";
 
 // Director: adjunta factura y solicita autorización.
-export function PanelSolicitud({ hitoId, fechaFacturar, folio }: { hitoId: string; fechaFacturar: Date | null; folio: string | null }) {
+export type DatosSolicitud = { hitoId: string; marca: string; concepto: string; importe: number; pendiente: number; fechaFacturar: Date | null; fechaVencimiento: Date | null; folio: string | null };
+
+export function PanelSolicitud({ hitoId, marca, concepto, importe, pendiente, fechaFacturar, fechaVencimiento, folio }: DatosSolicitud) {
   const [abierto, setAbierto] = useState(false);
   const accion = solicitarAutorizacion.bind(null, hitoId);
+  // Fecha requerida de pago: la guardada; si no hay, 30 días después de la fecha de facturación.
+  const base = fechaFacturar ?? new Date();
+  const vencimientoPropuesto = fechaVencimiento ?? new Date(base.getTime() + 30 * 86_400_000);
   return (
     <>
       <button type="button" onClick={() => setAbierto(true)} className={`${boton} border-acento bg-acento text-white`}>Facturar y solicitar</button>
       <Dialogo titulo="Factura y solicitud de autorización" abierto={abierto} cerrar={() => setAbierto(false)}>
         <Formulario accion={accion} textoBoton="Solicitar autorización" alGuardar={() => setAbierto(false)}>
+          <div className="grid grid-cols-3 gap-3 rounded-md border border-linea bg-superficie-2 px-4 py-3 text-sm">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-tinta-3">Cliente</div>
+              <div className="font-medium">{marca}</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-tinta-3">Concepto</div>
+              <div>{concepto}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-tinta-3">{pendiente < importe ? "Pendiente de" : "Importe sin IVA"}</div>
+              <div className="tabular font-medium">{dinero(pendiente)}</div>
+              {pendiente < importe ? <div className="text-xs text-tinta-3">de {dinero(importe)}</div> : null}
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Entrada nombre="montoSolicitado" etiqueta="Monto que se manda pagar" valor={pendiente} tipo="number" paso="1" requerido ayuda={`Puede ser una parcialidad. Máximo ${dinero(pendiente)}.`} className="sm:col-span-2" />
             <Entrada nombre="folio" etiqueta="Folio de factura" valor={folio} />
             <Fecha nombre="fechaFacturar" etiqueta="Fecha de facturación" valor={fechaFacturar ?? new Date()} />
+            <Fecha nombre="fechaVencimiento" etiqueta="Fecha requerida de pago" valor={vencimientoPropuesto} requerido ayuda="A partir de esta fecha el cobro cuenta como atrasado." className="sm:col-span-2" />
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-tinta-3">Factura PDF</span>
               <input name="facturaPdf" type="file" accept="application/pdf" className="campo !py-1.5 text-sm" />
@@ -71,7 +94,7 @@ export function Autorizar({ hitoId }: { hitoId: string }) {
 }
 
 // Pagos: registra el pago con comprobante.
-export function PanelPagoRecibido({ hitoId, pendiente }: { hitoId: string; pendiente: number }) {
+export function PanelPagoRecibido({ hitoId, pendiente, solicitado }: { hitoId: string; pendiente: number; solicitado?: number | null }) {
   const [abierto, setAbierto] = useState(false);
   const accion = registrarPagoCobro.bind(null, hitoId);
   return (
@@ -80,7 +103,7 @@ export function PanelPagoRecibido({ hitoId, pendiente }: { hitoId: string; pendi
       <Dialogo titulo="Registrar pago recibido" abierto={abierto} cerrar={() => setAbierto(false)}>
         <Formulario accion={accion} textoBoton="Marcar pagado" alGuardar={() => setAbierto(false)}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Entrada nombre="monto" etiqueta="Monto recibido" valor={pendiente} tipo="number" paso="1" requerido />
+            <Entrada nombre="monto" etiqueta="Monto recibido" valor={solicitado ?? pendiente} tipo="number" paso="1" requerido ayuda={solicitado && solicitado < pendiente ? `Se mandó pagar ${dinero(solicitado)} de ${dinero(pendiente)} pendientes.` : undefined} />
             <Fecha nombre="fecha" etiqueta="Fecha de pago" valor={new Date()} requerido />
             <Entrada nombre="folio" etiqueta="Folio de factura" placeholder="Si cambió" />
             <label className="block">

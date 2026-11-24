@@ -1,3 +1,4 @@
+import { fechaCobro } from "@/lib/formato";
 import { addDays, addMonths, format, startOfDay, startOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { EstadoContrato, Prisma } from "@prisma/client";
@@ -88,13 +89,14 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
 
   const alertas: Alerta[] = [];
   for (const h of hitos) {
-    const vencido = h.fechaFacturar! < hoy;
+    const ref = fechaCobro(h) ?? h.fechaFacturar!;
+    const vencido = ref < hoy;
     alertas.push({
       tipo: vencido ? "cobro_vencido" : "cobro_proximo",
       gravedad: vencido ? "riesgo" : "alerta",
       titulo: `${h.contrato.marca.nombre} · ${h.concepto}`,
       detalle: vencido ? "Cobro atrasado sin registro de pago" : h.autorizadoEn ? "Autorizado · registrar pago" : h.solicitadoEn ? "Esperando autorización" : "Facturar y solicitar autorización",
-      fecha: h.fechaFacturar,
+      fecha: ref,
       href: "/pagos",
       monto: h.importe - h.montoRecibido,
     });
@@ -231,7 +233,7 @@ export function sumarResumenes(rs: ResumenDirector[]): Omit<ResumenDirector, "di
 // Cobranza por antigüedad para la vista de cobranza y los reportes.
 export type TramoAntiguedad = { etiqueta: string; monto: number; hitos: number };
 
-export function antiguedad(hitos: { fechaFacturar: Date | null; importe: number; montoRecibido: number; estadoPago: string }[], hoy = startOfDay(new Date())): TramoAntiguedad[] {
+export function antiguedad(hitos: { fechaFacturar: Date | null; fechaVencimiento?: Date | null; importe: number; montoRecibido: number; estadoPago: string }[], hoy = startOfDay(new Date())): TramoAntiguedad[] {
   const tramos: TramoAntiguedad[] = [
     { etiqueta: "Vencido > 90 d", monto: 0, hitos: 0 },
     { etiqueta: "Vencido 31–90 d", monto: 0, hitos: 0 },
@@ -246,8 +248,9 @@ export function antiguedad(hitos: { fechaFacturar: Date | null; importe: number;
     const pendiente = Math.max(h.importe - h.montoRecibido, 0);
     if (pendiente === 0) continue;
     let i = 6;
-    if (h.fechaFacturar) {
-      const dias = Math.round((h.fechaFacturar.getTime() - hoy.getTime()) / 86_400_000);
+    const ref = fechaCobro(h);
+    if (ref) {
+      const dias = Math.round((ref.getTime() - hoy.getTime()) / 86_400_000);
       if (dias < -90) i = 0;
       else if (dias < -30) i = 1;
       else if (dias < 0) i = 2;

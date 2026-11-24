@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { autorizaContrato, puedeCapturar, requerirSesion, veComisiones, veTodo } from "@/lib/acceso";
 import { reglasPara } from "@/lib/consultas";
 import { comisionesPorHito, comisionProyectada } from "@/lib/comisiones";
-import { dinero, etiqueta, fecha, fechaLarga, diasHasta, textoDias, porcentaje } from "@/lib/formato";
+import { dinero, etiqueta, fecha, fechaLarga, diasHasta, fechaCobro, textoDias, porcentaje } from "@/lib/formato";
 import { Aviso, Boton, Cifra, Definicion, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { Anillo } from "@/components/graficas";
 import { LineaTiempo } from "./linea-tiempo";
@@ -170,7 +170,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
               </thead>
               <tbody>
                 {c.hitos.map((h) => {
-                  const d = diasHasta(h.fechaFacturar, hoy);
+                  const d = diasHasta(fechaCobro(h), hoy);
                   const pendienteH = h.importe - h.montoRecibido;
                   const tono = h.estadoPago === "PAGADO" ? "ok" : d === null ? "neutro" : d < 0 ? "riesgo" : d <= 30 ? "alerta" : "neutro";
                   const k = comisiones.find((x) => x.hitoId === h.id);
@@ -187,6 +187,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                       <Td>
                         <div>{h.fechaFacturar ? fecha(h.fechaFacturar) : h.fechaOrientativa ?? "Sin fecha"}</div>
                         {h.fechaFacturar && h.fechaOrientativa ? <div className="text-xs text-tinta-3">{h.fechaOrientativa}</div> : null}
+                        {h.fechaVencimiento ? <div className="text-xs text-tinta-3">Pago requerido {fecha(h.fechaVencimiento)}</div> : null}
                         {h.estadoPago !== "PAGADO" ? <Etiqueta tono={tono}>{textoDias(d)}</Etiqueta> : null}
                       </Td>
                       <Td className="text-tinta-2">
@@ -226,10 +227,10 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                       {puedeEditar ? (
                         <Td>
                           <div className="flex flex-col items-end gap-1">
-                            {pendienteH > 0 && !h.solicitadoEn ? <PanelSolicitud hitoId={h.id} fechaFacturar={h.fechaFacturar} folio={h.folioFactura} /> : null}
+                            {pendienteH > 0 && !h.solicitadoEn ? <PanelSolicitud hitoId={h.id} marca={c.marca.nombre} concepto={h.concepto} importe={h.importe} pendiente={pendienteH} fechaFacturar={h.fechaFacturar} fechaVencimiento={h.fechaVencimiento} folio={h.folioFactura} /> : null}
                             {pendienteH > 0 && h.solicitadoEn && !h.autorizadoEn && esAdmin(s) ? <Autorizar hitoId={h.id} /> : null}
                             {pendienteH > 0 && h.solicitadoEn && !h.autorizadoEn && !esAdmin(s) ? <Etiqueta tono="alerta">Esperando autorización</Etiqueta> : null}
-                            {pendienteH > 0 && h.autorizadoEn && (puedeCobrar(s) || esDeCartera(s)) ? <PanelPagoRecibido hitoId={h.id} pendiente={pendienteH} /> : null}
+                            {pendienteH > 0 && h.autorizadoEn && (puedeCobrar(s) || esDeCartera(s)) ? <PanelPagoRecibido hitoId={h.id} pendiente={pendienteH} solicitado={h.montoSolicitado} /> : null}
                             <PanelHito contratoId={c.id} hito={h} textoBoton="Editar" />
                             <BorrarHito hitoId={h.id} />
                           </div>

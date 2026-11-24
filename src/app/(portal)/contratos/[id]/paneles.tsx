@@ -46,6 +46,7 @@ export function PanelHito({ contratoId, hito, textoBoton }: { contratoId: string
             <Entrada nombre="importe" etiqueta="Importe sin IVA" valor={hito?.importe} tipo="number" paso="1" requerido />
             <Seleccion nombre="modalidad" etiqueta="Modalidad" valor={hito?.modalidad ?? "EFECTIVO"} opciones={OPCIONES.modalidad} />
             <Fecha nombre="fechaFacturar" etiqueta="Fecha a facturar" valor={hito?.fechaFacturar} />
+            <Fecha nombre="fechaVencimiento" etiqueta="Fecha requerida de pago" valor={hito?.fechaVencimiento} ayuda="Si se deja vacía, manda la fecha a facturar." />
             <Entrada nombre="fechaOrientativa" etiqueta="Fecha orientativa (texto)" valor={hito?.fechaOrientativa} placeholder="Febrero 2027" />
             <Seleccion nombre="estadoFactura" etiqueta="Estado de factura" valor={hito?.estadoFactura ?? "POR_EMITIR"} opciones={OPCIONES.estadoFactura} />
             <Entrada nombre="folioFactura" etiqueta="Folio de factura" valor={hito?.folioFactura} />

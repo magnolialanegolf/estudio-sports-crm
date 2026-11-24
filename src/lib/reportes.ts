@@ -1,3 +1,4 @@
+import { fechaCobro } from "@/lib/formato";
 import { addMonths, endOfMonth, format, startOfDay, startOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { EstadoContrato } from "@prisma/client";
@@ -140,8 +141,8 @@ export async function construirInforme(s: Sesion, args: { directorIds?: string[]
   const activos = hitos.filter((h) => h.contrato.estado === "VIGENTE" || h.contrato.estado === "PENDIENTE_FIRMA");
   const tramos = antiguedad(activos, hoy);
   const vencidos = activos
-    .filter((h) => h.fechaFacturar && h.fechaFacturar < hoy && h.estadoPago !== "PAGADO" && h.importe - h.montoRecibido > 0)
-    .map((h) => ({ id: h.id, marca: h.contrato.marca.nombre, concepto: h.concepto, pendiente: h.importe - h.montoRecibido, fecha: h.fechaFacturar, contratoId: h.contrato.id }))
+    .filter((h) => { const f = fechaCobro(h); return f !== null && f < hoy && h.estadoPago !== "PAGADO" && h.importe - h.montoRecibido > 0; })
+    .map((h) => ({ id: h.id, marca: h.contrato.marca.nombre, concepto: h.concepto, pendiente: h.importe - h.montoRecibido, fecha: fechaCobro(h), contratoId: h.contrato.id }))
     .sort((a, b) => (a.fecha?.getTime() ?? 0) - (b.fecha?.getTime() ?? 0));
 
   const pipeline = ESTADOS_PIPELINE.map((estado) => {

@@ -248,6 +248,8 @@ model HitoCobro {
   importe         Int
   modalidad       Modalidad     @default(EFECTIVO)
   fechaFacturar   DateTime?
+  fechaVencimiento DateTime?    // fecha requerida de pago; si falta, la referencia es fechaFacturar
+  montoSolicitado Int?          // monto que se manda pagar en la solicitud vigente (parcialidades)
   fechaOrientativa String?      // texto libre cuando no hay fecha exacta ("Febrero 2027")
   estadoFactura   EstadoFactura @default(POR_EMITIR)
   folioFactura    String?
@@ -261,6 +263,7 @@ model HitoCobro {
 
   @@index([contratoId])
   @@index([fechaFacturar])
+  @@index([fechaVencimiento])
   @@index([estadoPago])
 }
 

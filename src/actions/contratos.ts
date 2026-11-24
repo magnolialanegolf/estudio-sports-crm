@@ -123,6 +123,7 @@ const esquemaHito = z.object({
   importe: entero().pipe(z.number().int().min(0)),
   modalidad: z.enum(["EFECTIVO", "ESPECIE", "ACCIONES"]),
   fechaFacturar: fechaOpcional(),
+  fechaVencimiento: fechaOpcional(),
   fechaOrientativa: texto(200),
   estadoFactura: z.enum(["POR_EMITIR", "PENDIENTE_AUTORIZACION", "EMITIDA", "POR_CONFIRMAR"]),
   folioFactura: texto(80),
