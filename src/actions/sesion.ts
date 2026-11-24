@@ -33,7 +33,7 @@ export async function ingresar(_prev: EstadoIngreso, formData: FormData): Promis
     await registrar({ usuarioId: u?.id ?? null, accion: "ingresar", entidad: "sesion", detalle: { exito: false, usuario: datos.data.usuario } });
     return { error: "Usuario o contraseña incorrectos." };
   }
-  if (u.rol === "DIRECTOR" && (!u.director || !u.director.activo)) {
+  if ((u.rol === "DIRECTOR" || u.rol === "ASISTENTE_COMERCIAL") && (!u.director || !u.director.activo)) {
     return { error: "La cuenta no tiene una dirección comercial activa asignada." };
   }
 

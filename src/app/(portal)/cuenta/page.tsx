@@ -14,6 +14,8 @@ export default async function Cuenta({ searchParams }: { searchParams: Promise<{
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const proto = h.get("x-forwarded-proto") ?? "https";
   const liga = u?.icsToken ? `${proto}://${host}/api/calendario/${u.icsToken}.ics` : null;
+  const webcal = liga ? liga.replace(/^https?:\/\//, "webcal://") : null;
+  const google = liga ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal!)}` : null;
 
   return (
     <Pagina titulo="Mi cuenta">
@@ -41,18 +43,23 @@ export default async function Cuenta({ searchParams }: { searchParams: Promise<{
           className="lg:col-span-2"
         >
           {liga ? (
-            <div className="space-y-3 text-sm">
+            <div id="calendario" className="space-y-3 text-sm">
+              <div className="no-imprimir flex flex-wrap gap-2">
+                <a href={google!} target="_blank" rel="noreferrer" className="rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white hover:bg-[#182e4b]">Agregar a Google Calendar</a>
+                <a href={webcal!} className="rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium text-tinta hover:bg-superficie-2">Agregar a iPhone / Mac</a>
+                <a href={webcal!} className="rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium text-tinta hover:bg-superficie-2">Agregar a Outlook</a>
+              </div>
+              <p className="text-xs text-tinta-2">Es una suscripción, no una descarga: lo que cambie en el portal se refleja en tu agenda. Google tarda hasta unas horas en refrescar; iPhone y Outlook, minutos.</p>
               <div>
-                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-tinta-3">Liga privada de suscripción</div>
+                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-tinta-3">Liga privada de suscripción (si prefieres pegarla a mano)</div>
                 <code className="block break-all rounded border border-linea bg-superficie-2 px-3 py-2 text-xs">{liga}</code>
                 <p className="mt-1 text-xs text-tinta-3">Esta liga da acceso a tu agenda sin contraseña. No la compartas. Si la compartiste por error, renuévala.</p>
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <Paso titulo="Google Calendar (web)" pasos={["Abre calendar.google.com", "En «Otros calendarios» pulsa + → «Desde URL»", "Pega la liga y confirma", "Aparece en el celular con la app de Google Calendar"]} />
-                <Paso titulo="iPhone" pasos={["Ajustes → Apps → Calendario → Cuentas", "Añadir cuenta → Otra → Añadir calendario suscrito", "Pega la liga y guarda"]} />
-                <Paso titulo="Outlook" pasos={["Calendario → Agregar calendario", "Suscribirse desde la web", "Pega la liga"]} />
+                <Paso titulo="Google Calendar" pasos={["Pulsa «Agregar a Google Calendar»", "Google abre la pantalla «Agregar calendario» → Agregar", "Aparece en el celular con la app de Google Calendar"]} />
+                <Paso titulo="iPhone / Mac" pasos={["Pulsa «Agregar a iPhone / Mac» desde el dispositivo", "Acepta «Suscribirse»", "Queda en la app Calendario"]} />
+                <Paso titulo="A mano" pasos={["Copia la liga de arriba", "Google: Otros calendarios → + → Desde URL", "iPhone: Ajustes → Calendario → Cuentas → Añadir calendario suscrito"]} />
               </div>
-              <p className="text-xs text-tinta-3">Google actualiza los calendarios suscritos cada varias horas; el portal siempre tiene la versión al día.</p>
               <div className="no-imprimir flex gap-2">
                 <form action={renovarLigaCalendario}>
                   <Boton>Renovar liga</Boton>

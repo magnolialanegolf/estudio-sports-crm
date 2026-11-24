@@ -3,6 +3,7 @@ import type { Informe } from "@/lib/reportes";
 import { dinero, etiqueta, fecha, fechaLarga, diasHasta } from "@/lib/formato";
 import { Barras, Columnas } from "./graficas";
 import { Etiqueta, PorConfirmar, Tabla, Td, Th, Vacio } from "./ui";
+import { Mascota } from "./marca";
 
 // Cuerpo del informe. Se usa para el informe de un director y para el consolidado.
 // Diseñado para pantalla e impresión en A4.
@@ -16,9 +17,12 @@ export function CuerpoInforme({ informe, titulo, subtitulo, comparativo }: { inf
     <article className="mx-auto max-w-[1100px] rounded-lg border border-linea bg-superficie px-8 py-8 print:border-0 print:px-0 print:py-0">
       {/* Encabezado */}
       <header className="mb-8 flex flex-col gap-4 border-b-2 border-tinta pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="font-serif text-2xl tracking-wide text-tinta">Estudio Sports</div>
-          <div className="mt-1 text-xs font-medium uppercase tracking-[0.2em] text-tinta-3">{titulo}</div>
+        <div className="flex items-center gap-3">
+          <Mascota alto={40} color="#00345e" />
+          <div>
+            <div className="titulo-marca text-2xl text-acento">Estudio Sports</div>
+            <div className="etiqueta-marca mt-1 text-[10px] text-naranja">{titulo}</div>
+          </div>
         </div>
         <div className="text-sm text-tinta-2 sm:text-right">
           <div className="font-medium text-tinta">{subtitulo}</div>

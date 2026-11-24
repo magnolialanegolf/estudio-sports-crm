@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
-import { autorizaContrato, esProduccion, puedeCapturar, puedeCobrar, requerirSesion, veTodo } from "@/lib/acceso";
+import { autorizaContrato, esProduccion, filtroContratosProduccion, puedeCapturar, puedeCobrar, requerirSesion, veTodo } from "@/lib/acceso";
+import { notificar, responsablesDeContrato } from "@/lib/avisos";
 import { casilla, deFormulario, entero, fechaOpcional, primerError, texto, textoRequerido, type Resultado } from "./util";
 
 const esquemaContrato = z.object({
@@ -14,7 +15,7 @@ const esquemaContrato = z.object({
   directorId: texto(64),
   proyecto: textoRequerido(200),
   tipo: z.enum(["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"]),
-  estado: z.enum(["PROPUESTA", "PENDIENTE_FIRMA", "VIGENTE", "FINALIZADO", "CANCELADO"]),
+  estado: z.enum(["PROSPECTO", "PROPUESTA", "PENDIENTE_FIRMA", "VIGENTE", "FINALIZADO", "CANCELADO"]),
   monto: entero(),
   montoConfirmado: casilla(),
   inicio: fechaOpcional(),
@@ -23,6 +24,7 @@ const esquemaContrato = z.object({
   vencimientoConfirmado: casilla(),
   duracionMeses: entero(),
   talento: texto(200),
+  brief: texto(4000),
   documentoUrl: texto(500),
   renovacionDeId: texto(64),
   notas: texto(4000),
@@ -72,6 +74,7 @@ export async function guardarContrato(id: string | null, _prev: Resultado, fd: F
     vencimientoConfirmado: d.vencimientoConfirmado,
     duracionMeses: d.duracionMeses,
     talento: d.talento,
+    brief: d.brief,
     documentoUrl: d.documentoUrl,
     renovacionDeId: d.renovacionDeId || null,
     notas: d.notas,
@@ -203,7 +206,7 @@ const esquemaCompromiso = z.object({
   notas: texto(2000),
   // Repetición: genera N compromisos a partir de la fecha, cada semana, quincena o mes.
   repetirCantidad: entero(),
-  repetirCada: z.preprocess((v) => (v === "" ? null : v), z.enum(["SEMANA", "QUINCENA", "MES"]).nullable()),
+  repetirCada: z.preprocess((v) => (v === "" || v === undefined ? null : v), z.enum(["SEMANA", "QUINCENA", "MES"]).nullable()),
 });
 
 async function asignableValido(id: string | null) {
@@ -215,21 +218,34 @@ async function asignableValido(id: string | null) {
 
 export async function guardarCompromiso(contratoId: string, compromisoId: string | null, _prev: Resultado, fd: FormData): Promise<Resultado> {
   const s = await requerirSesion();
-  if (!puedeCapturar(s)) return { error: "Sin permiso." };
-  const c = await db.contrato.findUnique({ where: { id: contratoId }, select: { directorId: true } });
-  if (!c || !autorizaContrato(s, c)) return { error: "Contrato no disponible." };
+  const c = await db.contrato.findUnique({ where: { id: contratoId }, select: { id: true, directorId: true, marca: { select: { nombre: true } } } });
+  if (!c) return { error: "Contrato no disponible." };
+  // Producción puede crear actividades en los contratos que consulta, y editar solo las que creó.
+  const produccion = esProduccion(s);
+  if (produccion) {
+    const visible = await db.contrato.findFirst({ where: { id: contratoId, ...filtroContratosProduccion(s) }, select: { id: true } });
+    if (!visible) return { error: "Contrato no disponible." };
+    if (compromisoId) {
+      const k = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { creadoPorId: true } });
+      if (k?.creadoPorId !== s.usuarioId) return { error: "Solo puedes editar actividades que creaste." };
+    }
+  } else if (!puedeCapturar(s) || !autorizaContrato(s, c)) {
+    return { error: "Sin permiso." };
+  }
   const parse = esquemaCompromiso.safeParse(deFormulario(fd));
   if (!parse.success) return { error: primerError(parse.error) };
   const { repetirCantidad, repetirCada, ...d } = parse.data;
   const asignadoAId = await asignableValido(d.asignadoAId);
   const datos = { ...d, asignadoAId, cumplidoEn: d.estado === "CUMPLIDO" ? new Date() : null };
+  const texto = (n: number) => `${s.nombre} te asignó ${n > 1 ? `${n} tareas` : "una tarea"} en ${c.marca.nombre}: ${d.descripcion}`;
 
   if (compromisoId) {
-    const actual = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { estado: true, cumplidoEn: true } });
+    const actual = await db.compromiso.findUnique({ where: { id: compromisoId }, select: { estado: true, cumplidoEn: true, asignadoAId: true } });
     await db.compromiso.update({
       where: { id: compromisoId, contratoId },
       data: { ...datos, cumplidoEn: d.estado === "CUMPLIDO" ? (actual?.cumplidoEn ?? new Date()) : null },
     });
+    if (asignadoAId && asignadoAId !== actual?.asignadoAId) await notificar([asignadoAId], texto(1), `/tareas/${compromisoId}`, s.usuarioId);
     await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { contratoId, estado: d.estado, asignadoAId } });
   } else {
     const cantidad = repetirCantidad && repetirCada && d.fecha ? Math.min(Math.max(repetirCantidad, 1), 60) : 1;
@@ -249,16 +265,43 @@ export async function guardarCompromiso(contratoId: string, compromisoId: string
     const creados = await db.$transaction(
       fechas.map((fecha, i) =>
         db.compromiso.create({
-          data: { ...datos, contratoId, fecha, descripcion: cantidad > 1 ? `${d.descripcion} (${i + 1} de ${cantidad})` : d.descripcion },
+          data: { ...datos, contratoId, fecha, creadoPorId: s.usuarioId, descripcion: cantidad > 1 ? `${d.descripcion} (${i + 1} de ${cantidad})` : d.descripcion },
         }),
       ),
     );
+    if (asignadoAId) await notificar([asignadoAId], texto(cantidad), `/tareas/${creados[0].id}`, s.usuarioId);
+    // Si producción crea una actividad, el director de la cartera se entera.
+    if (produccion) await notificar(await responsablesDeContrato(c.directorId), `${s.nombre} registró una actividad en ${c.marca.nombre}: ${d.descripcion}`, `/tareas/${creados[0].id}`, s.usuarioId);
     await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "compromiso", entidadId: creados[0]?.id, detalle: { contratoId, cantidad, asignadoAId } });
   }
   revalidatePath(`/contratos/${contratoId}`);
+  revalidatePath(`/tareas/contrato/${contratoId}`);
   revalidatePath("/tareas");
+  revalidatePath("/avisos");
   revalidatePath("/");
   return { ok: true };
+}
+
+// Avisa a quien corresponde cuando cambia el estado de una tarea.
+async function avisarCambio(
+  s: { usuarioId: string; nombre: string },
+  k: { id: string; descripcion: string; estado: string; creadoPorId: string | null; asignadoAId: string | null; contrato: { id: string; directorId: string } },
+  estado: string,
+  reporte: string | null,
+) {
+  if (estado === k.estado) return;
+  const marca = await db.contrato.findUnique({ where: { id: k.contrato.id }, select: { marca: { select: { nombre: true } } } });
+  const nombreMarca = marca?.marca.nombre ?? "la marca";
+  const href = `/tareas/${k.id}`;
+  if (estado === "REQUIERE_ATENCION") {
+    const dest = [...(await responsablesDeContrato(k.contrato.directorId)), k.creadoPorId];
+    await notificar(dest, `${s.nombre} pide atención en ${nombreMarca} · ${k.descripcion}${reporte ? `: ${reporte.slice(0, 120)}` : ""}`, href, s.usuarioId);
+  } else if (estado === "CUMPLIDO") {
+    const dest = [...(await responsablesDeContrato(k.contrato.directorId)), k.creadoPorId];
+    await notificar(dest, `${s.nombre} reportó cumplida: ${nombreMarca} · ${k.descripcion}`, href, s.usuarioId);
+  } else if (k.asignadoAId && k.asignadoAId !== s.usuarioId) {
+    await notificar([k.asignadoAId], `${s.nombre} cambió a «${estado === "EN_CURSO" ? "en curso" : estado === "PENDIENTE" ? "pendiente" : "cancelada"}»: ${nombreMarca} · ${k.descripcion}`, href, s.usuarioId);
+  }
 }
 
 // Cambio de estado con reporte. Lo usan quien captura sobre su cartera y producción sobre lo asignado.
@@ -266,7 +309,10 @@ export async function reportarCompromiso(compromisoId: string, _prev: Resultado,
   const s = await requerirSesion();
   const k = await db.compromiso.findUnique({ where: { id: compromisoId }, include: { contrato: { select: { id: true, directorId: true } } } });
   if (!k) return { error: "Tarea no encontrada." };
-  const autorizado = esProduccion(s) ? k.asignadoAId === s.usuarioId : puedeCapturar(s) && autorizaContrato(s, k.contrato);
+  // Producción: la tarea asignada o la actividad que ella misma creó. Comercial: su cartera.
+  const autorizado = esProduccion(s)
+    ? k.asignadoAId === s.usuarioId || k.creadoPorId === s.usuarioId
+    : puedeCapturar(s) && autorizaContrato(s, k.contrato);
   if (!autorizado) return { error: "Sin permiso sobre esta tarea." };
   const estado = String(fd.get("estado") ?? "");
   if (!["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION", "CUMPLIDO", "CANCELADO"].includes(estado)) return { error: "Estado inválido." };
@@ -280,6 +326,7 @@ export async function reportarCompromiso(compromisoId: string, _prev: Resultado,
       cumplidoEn: estado === "CUMPLIDO" ? (k.cumplidoEn ?? new Date()) : null,
     },
   });
+  await avisarCambio(s, k, estado, reporte);
   await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { estado, reporte: reporte ? true : false } });
   revalidatePath(`/contratos/${k.contrato.id}`);
   revalidatePath("/tareas");
@@ -294,6 +341,7 @@ export async function cambiarEstadoCompromiso(compromisoId: string, estado: "PEN
   const autorizado = esProduccion(s) ? k.asignadoAId === s.usuarioId && estado !== "CANCELADO" : puedeCapturar(s) && autorizaContrato(s, k.contrato);
   if (!autorizado) return;
   await db.compromiso.update({ where: { id: compromisoId }, data: { estado, cumplidoEn: estado === "CUMPLIDO" ? (k.cumplidoEn ?? new Date()) : null } });
+  await avisarCambio(s, k, estado, null);
   await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "compromiso", entidadId: compromisoId, detalle: { estado } });
   revalidatePath(`/contratos/${k.contrato.id}`);
   revalidatePath("/tareas");

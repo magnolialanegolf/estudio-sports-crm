@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { requerirSesion, veComisionesDeTodos, veTodo } from "@/lib/acceso";
+import { requerirSesion, veComisiones, veComisionesDeTodos, veTodo } from "@/lib/acceso";
 import { construirInforme, periodoDesdeParametros } from "@/lib/reportes";
 import { CuerpoInforme } from "@/components/informe";
 import { SelectorPeriodo } from "@/components/selector-periodo";
@@ -16,7 +16,7 @@ export default async function InformeDirector({ params, searchParams }: { params
   const director = await db.director.findUnique({ where: { id } });
   if (!director) notFound();
 
-  const puedeVerComisiones = s.rol === "DIRECTOR" || veComisionesDeTodos(s);
+  const puedeVerComisiones = veComisiones(s);
   const incluirComisiones = puedeVerComisiones && q.comisiones !== "0";
   const periodo = periodoDesdeParametros(q);
   const informe = await construirInforme(s, { directorIds: [id], periodo, incluirComisiones });

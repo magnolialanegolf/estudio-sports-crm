@@ -77,7 +77,7 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
       acciones={
         <>
           {global ? <FiltroDirector directores={directores} actual={directorId} ruta="/calendario" extra={{ mes: format(inicioMes, "yyyy-MM"), capa }} /> : null}
-          <Boton href={`/api/exportar/calendario.ics${directorId ? `?director=${directorId}` : ""}`}>Descargar ICS</Boton>
+          <Boton href="/cuenta#calendario" tipo="primario">Sincronizar con mi celular</Boton>
         </>
       }
     >

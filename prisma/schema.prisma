@@ -13,10 +13,14 @@ datasource db {
 }
 
 enum Rol {
-  ADMIN_GENERAL
-  DIRECTOR
-  ADMINISTRACION
-  PRODUCCION
+  ADMIN_GENERAL      // configura todo
+  GERENTE_GENERAL    // ve todo, incluidas comisiones; no configura reglas ni usuarios
+  DIRECTOR           // su cartera; ve sus comisiones
+  ASISTENTE_COMERCIAL // captura en la cartera de un director; no ve comisiones
+  ADMINISTRACION     // pagos y facturación de todas las carteras; sin comisiones
+  PRODUCCION         // tareas asignadas
+  CONTENIDOS         // tareas asignadas
+  OPERATIVO          // tareas asignadas
   LECTURA
 }
 
@@ -28,6 +32,7 @@ enum TipoContrato {
 }
 
 enum EstadoContrato {
+  PROSPECTO
   PROPUESTA
   PENDIENTE_FIRMA
   VIGENTE
@@ -87,7 +92,12 @@ model Usuario {
   icsToken     String?   // liga privada del calendario personal
   bitacora     Bitacora[]
   compromisosAsignados Compromiso[] @relation("Asignacion")
+  compromisosCreados   Compromiso[] @relation("Creacion")
   documentos   Documento[]
+  avisos       Aviso[]
+  incidenciasReportadas Incidencia[] @relation("IncidenciasReportadas")
+  incidenciasAsignadas  Incidencia[] @relation("IncidenciasAsignadas")
+  comentarios  ComentarioIncidencia[]
 
   @@index([icsToken])
 }
@@ -118,6 +128,7 @@ model Marca {
   contactos Contacto[]
   contratos Contrato[]
   reglas    ReglaComision[]
+  incidencias Incidencia[]
 }
 
 // Asignación Marca ↔ Director con vigencia. Una marca puede cambiar de manos.
@@ -167,6 +178,7 @@ model Contrato {
   vencimientoConfirmado Boolean  @default(false)
   duracionMeses   Int?
   talento         String?
+  brief           String?        // acuerdos de contenido, visible para producción; sin montos
   documentoUrl    String?
   renovacionDeId  String?        @unique
   renovacionDe    Contrato?      @relation("Renovacion", fields: [renovacionDeId], references: [id])
@@ -178,6 +190,7 @@ model Contrato {
   hitos           HitoCobro[]
   compromisos     Compromiso[]
   documentos      Documento[]
+  incidencias     Incidencia[]
 
   @@index([directorId, estado])
   @@index([marcaId])
@@ -195,6 +208,8 @@ model Compromiso {
   responsable String?
   asignadoAId String?
   asignadoA   Usuario?         @relation("Asignacion", fields: [asignadoAId], references: [id])
+  creadoPorId String?
+  creadoPor   Usuario?         @relation("Creacion", fields: [creadoPorId], references: [id])
   estado      EstadoCompromiso @default(PENDIENTE)
   reporte     String?          // lo que informa quien ejecuta la tarea
   cumplidoEn  DateTime?
@@ -208,10 +223,25 @@ model Compromiso {
 }
 
 // Hito de cobro: cada factura o pago previsto de un contrato.
+enum CategoriaDocumento {
+  CONTRATO
+  FACTURA_PDF
+  FACTURA_XML
+  COMPROBANTE
+  OTRO
+}
+
 model HitoCobro {
   id              String        @id @default(cuid())
   contratoId      String
   contrato        Contrato      @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  // Flujo: programado → solicitado (con factura) → autorizado por dirección → pagado (con comprobante)
+  solicitadoEn    DateTime?
+  solicitadoPorId String?
+  autorizadoEn    DateTime?
+  autorizadoPorId String?
+  pagoRegistradoPorId String?
+  documentos      Documento[]
   concepto        String
   importe         Int
   modalidad       Modalidad     @default(EFECTIVO)
@@ -290,6 +320,9 @@ model Documento {
   id          String   @id @default(cuid())
   contratoId  String
   contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  hitoId      String?
+  hito        HitoCobro? @relation(fields: [hitoId], references: [id], onDelete: Cascade)
+  categoria   CategoriaDocumento @default(OTRO)
   nombre      String
   tipoMime    String
   tamano      Int
@@ -300,4 +333,78 @@ model Documento {
   creadoEn    DateTime @default(now())
 
   @@index([contratoId])
+  @@index([hitoId])
+}
+
+// Aviso dentro del portal: asignaciones, reportes y cambios de estado.
+model Aviso {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  texto     String
+  href      String?
+  leido     Boolean  @default(false)
+  creadoEn  DateTime @default(now())
+
+  @@index([usuarioId, leido, creadoEn])
+}
+
+enum TipoIncidencia {
+  INCIDENCIA
+  PENDIENTE
+  PROBLEMA
+  SOLICITUD
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum EstadoIncidencia {
+  ABIERTA
+  EN_ATENCION
+  RESUELTA
+  CERRADA
+}
+
+// Incidencias, pendientes y problemas de cualquier nivel, con responsable y seguimiento.
+model Incidencia {
+  id            String           @id @default(cuid())
+  titulo        String
+  descripcion   String?
+  tipo          TipoIncidencia   @default(PENDIENTE)
+  prioridad     Prioridad        @default(MEDIA)
+  estado        EstadoIncidencia @default(ABIERTA)
+  reportadoPorId String
+  reportadoPor  Usuario          @relation("IncidenciasReportadas", fields: [reportadoPorId], references: [id])
+  asignadoAId   String?
+  asignadoA     Usuario?         @relation("IncidenciasAsignadas", fields: [asignadoAId], references: [id])
+  contratoId    String?
+  contrato      Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  marcaId       String?
+  marca         Marca?           @relation(fields: [marcaId], references: [id], onDelete: SetNull)
+  fechaLimite   DateTime?
+  resueltoEn    DateTime?
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
+  comentarios   ComentarioIncidencia[]
+
+  @@index([estado, prioridad])
+  @@index([asignadoAId, estado])
+  @@index([reportadoPorId])
+}
+
+model ComentarioIncidencia {
+  id           String     @id @default(cuid())
+  incidenciaId String
+  incidencia   Incidencia @relation(fields: [incidenciaId], references: [id], onDelete: Cascade)
+  usuarioId    String
+  usuario      Usuario    @relation(fields: [usuarioId], references: [id])
+  texto        String
+  creadoEn     DateTime   @default(now())
+
+  @@index([incidenciaId])
 }

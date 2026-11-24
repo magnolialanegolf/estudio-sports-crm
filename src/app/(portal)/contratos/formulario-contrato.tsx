@@ -20,6 +20,7 @@ type ContratoBase = {
   vencimientoConfirmado?: boolean;
   duracionMeses?: number | null;
   talento?: string | null;
+  brief?: string | null;
   documentoUrl?: string | null;
   renovacionDeId?: string | null;
   notas?: string | null;
@@ -64,7 +65,8 @@ export function FormularioContrato({
         <Casilla nombre="inicioConfirmado" etiqueta="Inicio confirmado" valor={contrato?.inicioConfirmado} />
         <Casilla nombre="vencimientoConfirmado" etiqueta="Vencimiento confirmado" valor={contrato?.vencimientoConfirmado} />
       </div>
-      <Area nombre="notas" etiqueta="Notas" valor={contrato?.notas} />
+      <Area nombre="brief" etiqueta="Acuerdos de contenido (visible para producción)" valor={contrato?.brief} filas={4} ayuda="De qué trata, qué se acordó entregar, dónde, con quién, formatos y restricciones. Sin montos ni comisiones: esto sí lo ve producción." />
+      <Area nombre="notas" etiqueta="Notas internas" valor={contrato?.notas} ayuda="Solo comercial y administración." />
       <Area nombre="observaciones" etiqueta="Observaciones de conciliación" valor={contrato?.observaciones} filas={2} ayuda="Contradicciones o datos por confirmar con la marca." />
     </Formulario>
   );

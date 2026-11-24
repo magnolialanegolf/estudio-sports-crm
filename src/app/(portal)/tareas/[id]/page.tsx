@@ -12,7 +12,7 @@ export default async function DetalleTarea({ params }: { params: Promise<{ id: s
   const s = await requerirSesion();
   const { id } = await params;
   const t = await db.compromiso.findFirst({
-    where: { id, ...filtroCompromisos(s) },
+    where: { id, ...(esProduccion(s) ? { OR: [{ asignadoAId: s.usuarioId }, { creadoPorId: s.usuarioId }] } : filtroCompromisos(s)) },
     include: {
       contrato: { select: { id: true, codigo: true, proyecto: true, tipo: true, talento: true, marca: { select: { id: true, nombre: true } }, director: { select: { nombre: true } } } },
       asignadoA: { select: { nombre: true } },
@@ -24,7 +24,7 @@ export default async function DetalleTarea({ params }: { params: Promise<{ id: s
   const abierta = t.estado === "PENDIENTE" || t.estado === "EN_CURSO" || t.estado === "REQUIERE_ATENCION";
   const retrasada = abierta && d !== null && d < 0;
   const produccion = esProduccion(s);
-  const puedeReportar = produccion ? t.asignadoAId === s.usuarioId : puedeCapturar(s);
+  const puedeReportar = produccion ? t.asignadoAId === s.usuarioId || t.creadoPorId === s.usuarioId : puedeCapturar(s);
 
   const hermanas = await db.compromiso.findMany({
     where: { contratoId: t.contrato.id, id: { not: t.id }, ...filtroCompromisos(s) },
@@ -46,7 +46,8 @@ export default async function DetalleTarea({ params }: { params: Promise<{ id: s
       acciones={
         <>
           <Boton href="/tareas">Volver a tareas</Boton>
-          {!produccion ? <Boton href={`/contratos/${t.contrato.id}`}>Ver contrato</Boton> : null}
+          <Boton href={`/incidencias/nueva?contrato=${t.contrato.id}`}>Reportar incidencia</Boton>
+          {produccion ? <Boton href={`/tareas/contrato/${t.contrato.id}`}>Ver expediente</Boton> : <Boton href={`/contratos/${t.contrato.id}`}>Ver contrato</Boton>}
         </>
       }
     >

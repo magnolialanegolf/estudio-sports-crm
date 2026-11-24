@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Icono, type NombreIcono } from "./iconos";
 
 // Piezas de interfaz sobrias y reutilizables. Sin librería de componentes externa.
 
@@ -18,7 +19,7 @@ export function Pagina({
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-tinta">{titulo}</h1>
+          <h1 className="text-[26px] font-semibold text-tinta">{titulo}</h1>
           {subtitulo ? <p className="mt-1 text-sm text-tinta-2">{subtitulo}</p> : null}
         </div>
         {acciones ? <div className="no-imprimir flex flex-wrap items-center gap-2">{acciones}</div> : null}
@@ -42,7 +43,7 @@ export function Tarjeta({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-linea bg-superficie ${className}`}>
+    <section className={`tarjeta rounded-xl border border-linea bg-superficie ${className}`}>
       {titulo || acciones ? (
         <div className="flex items-start justify-between gap-3 border-b border-linea px-5 py-3">
           <div>
@@ -62,24 +63,37 @@ export function Cifra({
   valor,
   nota,
   tono = "neutro",
+  icono,
 }: {
   etiqueta: string;
   valor: ReactNode;
   nota?: ReactNode;
   tono?: "neutro" | "ok" | "alerta" | "riesgo" | "acento";
+  icono?: NombreIcono;
 }) {
-  const borde = {
-    neutro: "border-linea",
-    ok: "border-ok/40",
-    alerta: "border-alerta/40",
-    riesgo: "border-riesgo/50",
-    acento: "border-acento/40",
+  const estilo = {
+    neutro: { borde: "border-linea", fondo: "bg-superficie", icono: "bg-neutro-suave text-tinta-2", barra: "bg-linea-fuerte" },
+    ok: { borde: "border-ok/25", fondo: "bg-superficie", icono: "bg-ok-suave text-ok", barra: "bg-ok" },
+    alerta: { borde: "border-alerta/25", fondo: "bg-superficie", icono: "bg-alerta-suave text-alerta", barra: "bg-alerta" },
+    riesgo: { borde: "border-riesgo/25", fondo: "bg-superficie", icono: "bg-riesgo-suave text-riesgo", barra: "bg-riesgo" },
+    acento: { borde: "border-acento/25", fondo: "bg-superficie", icono: "bg-acento-suave text-acento", barra: "bg-naranja" },
   }[tono];
+  const I = icono ? Icono[icono] : null;
   return (
-    <div className={`rounded-lg border bg-superficie px-4 py-3 ${borde}`}>
-      <div className="text-xs font-medium uppercase tracking-wide text-tinta-3">{etiqueta}</div>
-      <div className="tabular mt-1 text-xl font-semibold text-tinta">{valor}</div>
-      {nota ? <div className="mt-0.5 text-xs text-tinta-2">{nota}</div> : null}
+    <div className={`tarjeta relative overflow-hidden rounded-xl border ${estilo.borde} ${estilo.fondo} px-4 py-3.5`}>
+      <span className={`absolute inset-y-0 left-0 w-1 ${estilo.barra}`} aria-hidden />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-tinta-3">{etiqueta}</div>
+          <div className="tabular mt-1 text-2xl font-semibold leading-tight text-tinta">{valor}</div>
+          {nota ? <div className="mt-1 text-xs text-tinta-2">{nota}</div> : null}
+        </div>
+        {I ? (
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${estilo.icono}`}>
+            <I />
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -95,7 +109,7 @@ export function Etiqueta({ children, tono = "neutro", titulo }: { children: Reac
     acento: "bg-acento-suave text-acento",
   }[tono];
   return (
-    <span title={titulo} className={`inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${clase}`}>
+    <span title={titulo} className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${clase}`}>
       {children}
     </span>
   );
@@ -130,12 +144,12 @@ export function Boton({
   value?: string;
   formAction?: (formData: FormData) => void | Promise<void>;
 }) {
-  const base = `inline-flex items-center justify-center rounded border font-medium transition-colors disabled:opacity-50 ${
+  const base = `inline-flex items-center justify-center rounded-md border font-medium transition-colors disabled:opacity-50 ${
     pequeno ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm"
   }`;
   const estilo = {
-    primario: "border-acento bg-acento text-white hover:bg-[#182e4b]",
-    secundario: "border-linea-fuerte bg-superficie text-tinta hover:bg-superficie-2",
+    primario: "border-acento bg-acento text-white shadow-sm hover:bg-acento-2",
+    secundario: "border-linea-fuerte bg-superficie text-tinta shadow-sm hover:border-acento-2 hover:text-acento",
     peligro: "border-riesgo/40 bg-superficie text-riesgo hover:bg-riesgo-suave",
     texto: "border-transparent bg-transparent text-acento hover:underline px-1",
   }[tipo];

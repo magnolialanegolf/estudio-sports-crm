@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { startOfDay, addDays } from "date-fns";
 import { db } from "@/lib/db";
-import { esProduccion, filtroCompromisos, requerirSesion, veTodo } from "@/lib/acceso";
+import { esProduccion, filtroCompromisos, filtroContratosProduccion, requerirSesion, veTodo } from "@/lib/acceso";
 import { etiqueta, fecha, diasHasta, textoDias } from "@/lib/formato";
 import { Aviso, Cifra, Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { ReportarRapido } from "./paneles";
@@ -16,6 +16,13 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
   const filtro = filtroCompromisos(s);
   const soloAbiertas = ver !== "todas";
 
+  const expedientes = produccion
+    ? await db.contrato.findMany({
+        where: filtroContratosProduccion(s),
+        select: { id: true, proyecto: true, tipo: true, estado: true, vencimiento: true, brief: true, marca: { select: { nombre: true } }, _count: { select: { compromisos: { where: { asignadoAId: s.usuarioId, estado: { in: ["PENDIENTE", "EN_CURSO", "REQUIERE_ATENCION"] } } } } } },
+        orderBy: [{ marca: { nombre: "asc" } }],
+      })
+    : [];
   const [tareas, asignables] = await Promise.all([
     db.compromiso.findMany({
       where: {
@@ -29,7 +36,7 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
       },
       orderBy: [{ estado: "asc" }, { fecha: "asc" }],
     }),
-    produccion ? Promise.resolve([]) : db.usuario.findMany({ where: { activo: true, rol: { in: ["PRODUCCION", "ADMIN_GENERAL", "DIRECTOR"] } }, select: { id: true, nombre: true, rol: true }, orderBy: { nombre: "asc" } }),
+    produccion ? Promise.resolve([]) : db.usuario.findMany({ where: { activo: true, rol: { in: ["PRODUCCION", "CONTENIDOS", "OPERATIVO", "ADMIN_GENERAL", "GERENTE_GENERAL", "DIRECTOR", "ASISTENTE_COMERCIAL"] } }, select: { id: true, nombre: true, rol: true }, orderBy: { nombre: "asc" } }),
   ]);
 
   const abiertas = tareas.filter((t) => t.estado === "PENDIENTE" || t.estado === "EN_CURSO" || t.estado === "REQUIERE_ATENCION");
@@ -78,7 +85,29 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
         )}
       </div>
 
-      <Tarjeta>
+      {produccion ? (
+        <div className="mb-5">
+          <Tarjeta titulo="Contratos en los que participas" descripcion="Abre el expediente para ver de qué trata, con quién es y registrar actividades.">
+            {expedientes.length === 0 ? (
+              <Vacio>Aún no hay contratos vigentes ni tareas asignadas.</Vacio>
+            ) : (
+              <ul className="-mx-5 divide-y divide-linea/70">
+                {expedientes.map((e) => (
+                  <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                    <div className="min-w-0">
+                      <Link href={`/tareas/contrato/${e.id}`} className="font-medium text-acento hover:underline">{e.marca.nombre} · {e.proyecto}</Link>
+                      <div className="text-xs text-tinta-3">{etiqueta("tipo", e.tipo)} · {etiqueta("estadoContrato", e.estado)}{e.vencimiento ? ` · vence ${fecha(e.vencimiento)}` : ""}{e.brief ? "" : " · sin acuerdos capturados"}</div>
+                    </div>
+                    <Etiqueta tono={e._count.compromisos > 0 ? "acento" : "neutro"}>{e._count.compromisos} abierta(s)</Etiqueta>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Tarjeta>
+        </div>
+      ) : null}
+
+      <Tarjeta titulo={produccion ? "Mis tareas" : undefined}>
         {tareas.length === 0 ? (
           <Vacio>{produccion ? "No tienes tareas asignadas." : "Sin tareas con ese filtro."}</Vacio>
         ) : (
@@ -101,7 +130,9 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
                 return (
                   <tr key={t.id} className="hover:bg-superficie-2">
                     <Td>
-                      <Link href={`/tareas/${t.id}`} className="font-medium text-acento hover:underline">{t.contrato.marca.nombre}</Link>
+                      <Link href={produccion ? `/tareas/contrato/${t.contrato.id}` : `/contratos/${t.contrato.id}`} className="font-medium text-acento hover:underline">{t.contrato.marca.nombre}</Link>
+                      {" · "}
+                      <Link href={`/tareas/${t.id}`} className="text-xs text-acento hover:underline">abrir tarea</Link>
                       <div className={t.estado === "CUMPLIDO" ? "text-tinta-3 line-through" : "text-tinta"}>{t.descripcion}</div>
                       <div className="text-xs text-tinta-3">{etiqueta("tipoCompromiso", t.tipo)}{produccion ? "" : ` · ${t.contrato.proyecto}`}</div>
                     </Td>
@@ -109,7 +140,10 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
                       <div>{fecha(t.fecha)}</div>
                       {abierta ? <Etiqueta tono={retrasada ? "riesgo" : d !== null && d <= 7 ? "alerta" : "neutro"}>{retrasada ? `retrasada ${Math.abs(d!)} d` : textoDias(d)}</Etiqueta> : null}
                     </Td>
-                    <Td className="text-tinta-2">{t.asignadoA?.nombre ?? t.responsable ?? <span className="text-tinta-3">Sin asignar</span>}</Td>
+                    <Td className="text-tinta-2">
+                      {t.asignadoA?.nombre ?? t.responsable ?? <span className="text-tinta-3">Sin asignar</span>}
+                      {produccion && t.asignadoAId !== s.usuarioId ? <div className="text-xs text-tinta-3">registrada por ti</div> : null}
+                    </Td>
                     {veTodo(s) ? <Td className="text-tinta-2">{t.contrato.director.nombre}</Td> : null}
                     <Td>
                       <Etiqueta tono={t.estado === "CUMPLIDO" ? "ok" : t.estado === "REQUIERE_ATENCION" ? "riesgo" : t.estado === "EN_CURSO" ? "acento" : t.estado === "CANCELADO" ? "neutro" : retrasada ? "riesgo" : "alerta"}>{retrasada ? "Retrasada" : etiqueta("estadoCompromiso", t.estado)}</Etiqueta>

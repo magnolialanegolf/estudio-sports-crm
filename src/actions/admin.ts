@@ -73,7 +73,7 @@ export async function asignarMarca(fd: FormData) {
 const esquemaRegla = z.object({
   directorId: textoRequerido(64),
   marcaId: texto(64),
-  tipo: z.preprocess((v) => (v === "" ? null : v), z.enum(["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"]).nullable()),
+  tipo: z.preprocess((v) => (v === "" || v === undefined ? null : v), z.enum(["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"]).nullable()),
   pctCasa: porcentajeFraccion(),
   pctDirector: porcentajeFraccion(),
   vigenteDesde: fechaRequerida(),
@@ -143,7 +143,7 @@ const esquemaUsuario = z.object({
   usuario: z.string().trim().toLowerCase().min(3).max(40).regex(/^[a-z0-9._-]+$/, "Solo letras, números, punto, guion y guion bajo."),
   nombre: textoRequerido(120),
   correo: texto(160),
-  rol: z.enum(["ADMIN_GENERAL", "DIRECTOR", "ADMINISTRACION", "LECTURA"]),
+  rol: z.enum(["ADMIN_GENERAL", "GERENTE_GENERAL", "DIRECTOR", "ASISTENTE_COMERCIAL", "ADMINISTRACION", "PRODUCCION", "CONTENIDOS", "OPERATIVO", "LECTURA"]),
   directorId: texto(64),
   clave: z.string().max(256).optional(),
   activo: casilla(),
@@ -154,8 +154,9 @@ export async function guardarUsuario(id: string | null, _prev: Resultado, fd: Fo
   const parse = esquemaUsuario.safeParse({ ...deFormulario(fd), activo: fd.get("activo") ?? (id ? undefined : "on") });
   if (!parse.success) return { error: primerError(parse.error) };
   const d = parse.data;
-  if (d.rol === "DIRECTOR" && !d.directorId) return { error: "Un usuario con rol director debe vincularse a una dirección comercial." };
-  const directorId = d.rol === "DIRECTOR" ? d.directorId : null;
+  const deCartera = d.rol === "DIRECTOR" || d.rol === "ASISTENTE_COMERCIAL";
+  if (deCartera && !d.directorId) return { error: "Director y asistente comercial deben vincularse a una dirección comercial." };
+  const directorId = deCartera ? d.directorId : null;
   try {
     if (id) {
       const data: Record<string, unknown> = { usuario: d.usuario, nombre: d.nombre, correo: d.correo, rol: d.rol, directorId, activo: d.activo };

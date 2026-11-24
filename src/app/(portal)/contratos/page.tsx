@@ -5,7 +5,7 @@ import { filtroContratos, puedeCapturar, requerirSesion, veTodo } from "@/lib/ac
 import { dinero, etiqueta, fecha, diasHasta } from "@/lib/formato";
 import { Boton, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 
-const ESTADOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "FINALIZADO", "CANCELADO"];
+const ESTADOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "PROSPECTO", "FINALIZADO", "CANCELADO"];
 
 export default async function Contratos({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
   const s = await requerirSesion();
@@ -23,7 +23,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
     orderBy: [{ marca: { esDemo: "asc" } }, { estado: "asc" }, { vencimiento: "asc" }, { marca: { nombre: "asc" } }],
   });
 
-  const orden: Record<EstadoContrato, number> = { VIGENTE: 0, PENDIENTE_FIRMA: 1, PROPUESTA: 2, FINALIZADO: 3, CANCELADO: 4 };
+  const orden: Record<EstadoContrato, number> = { VIGENTE: 0, PENDIENTE_FIRMA: 1, PROPUESTA: 2, PROSPECTO: 3, FINALIZADO: 4, CANCELADO: 5 };
   contratos.sort((a, b) => Number(a.marca.esDemo) - Number(b.marca.esDemo) || orden[a.estado] - orden[b.estado]);
 
   return (

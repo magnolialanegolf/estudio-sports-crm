@@ -1,4 +1,5 @@
-import { addDays, startOfDay } from "date-fns";
+import { addDays, addMonths, format, startOfDay, startOfMonth, subMonths } from "date-fns";
+import { es } from "date-fns/locale";
 import type { EstadoContrato, Prisma } from "@prisma/client";
 import { db } from "./db";
 import type { Sesion } from "./sesion";
@@ -7,9 +8,10 @@ import { aplanarRegla, comisionProyectada, comisionesPorHito, resumirComisiones,
 
 // Consultas compartidas por las vistas. Todas reciben la sesión y aplican el filtro de fila.
 
-export const ESTADOS_ACTIVOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA"];
-export const ESTADOS_PIPELINE: EstadoContrato[] = ["PROPUESTA", "PENDIENTE_FIRMA"];
+export const ESTADOS_ACTIVOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "PROSPECTO"];
+export const ESTADOS_PIPELINE: EstadoContrato[] = ["PROSPECTO", "PROPUESTA", "PENDIENTE_FIRMA"];
 export const PONDERACION: Record<EstadoContrato, number> = {
+  PROSPECTO: 0.1,
   PROPUESTA: 0.4,
   PENDIENTE_FIRMA: 0.8,
   VIGENTE: 1,
@@ -47,7 +49,7 @@ export async function hitosVisibles(s: Sesion, extra: Prisma.HitoCobroWhereInput
 }
 
 export type Alerta = {
-  tipo: "cobro_vencido" | "cobro_proximo" | "renovacion" | "compromiso_vencido" | "compromiso_proximo" | "por_confirmar";
+  tipo: "cobro_vencido" | "cobro_proximo" | "renovacion" | "compromiso_vencido" | "compromiso_proximo" | "por_confirmar" | "incidencia";
   gravedad: "riesgo" | "alerta" | "neutro";
   titulo: string;
   detalle: string;
@@ -91,9 +93,9 @@ export async function agenda(s: Sesion, horizonteDias = 30, directorId?: string)
       tipo: vencido ? "cobro_vencido" : "cobro_proximo",
       gravedad: vencido ? "riesgo" : "alerta",
       titulo: `${h.contrato.marca.nombre} · ${h.concepto}`,
-      detalle: vencido ? "Cobro vencido sin registro de pago" : "Facturar o cobrar",
+      detalle: vencido ? "Cobro atrasado sin registro de pago" : h.autorizadoEn ? "Autorizado · registrar pago" : h.solicitadoEn ? "Esperando autorización" : "Facturar y solicitar autorización",
       fecha: h.fechaFacturar,
-      href: `/contratos/${h.contrato.id}`,
+      href: "/pagos",
       monto: h.importe - h.montoRecibido,
     });
   }
@@ -257,4 +259,26 @@ export function antiguedad(hitos: { fechaFacturar: Date | null; importe: number;
     tramos[i].hitos += 1;
   }
   return tramos;
+}
+
+// Cobrado y programado por mes: cuatro meses atrás, cinco adelante.
+export async function serieMensual(s: Sesion, directorId?: string) {
+  const hoy = startOfDay(new Date());
+  const hitos = await hitosVisibles(s, {}, directorId);
+  const meses: Date[] = [];
+  for (let i = -4; i <= 5; i++) meses.push(startOfMonth(i < 0 ? subMonths(hoy, -i) : addMonths(hoy, i)));
+  const clave = (d: Date) => format(d, "yyyy-MM");
+  const cobrado = new Map(meses.map((m) => [clave(m), 0]));
+  const programado = new Map(meses.map((m) => [clave(m), 0]));
+  for (const h of hitos) {
+    if (h.montoRecibido > 0 && h.fechaPago && cobrado.has(clave(h.fechaPago))) cobrado.set(clave(h.fechaPago), cobrado.get(clave(h.fechaPago))! + h.montoRecibido);
+    const pend = h.importe - h.montoRecibido;
+    if (pend > 0 && h.fechaFacturar && (h.contrato.estado === "VIGENTE" || h.contrato.estado === "PENDIENTE_FIRMA") && programado.has(clave(h.fechaFacturar)))
+      programado.set(clave(h.fechaFacturar), programado.get(clave(h.fechaFacturar))! + pend);
+  }
+  return {
+    categorias: meses.map((m) => format(m, "MMM yy", { locale: es })),
+    cobrado: meses.map((m) => cobrado.get(clave(m))!),
+    programado: meses.map((m) => programado.get(clave(m))!),
+  };
 }

@@ -2,15 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { startOfDay } from "date-fns";
 import { db } from "@/lib/db";
-import { autorizaContrato, puedeCapturar, requerirSesion, veComisionesDeTodos, veTodo } from "@/lib/acceso";
+import { autorizaContrato, puedeCapturar, requerirSesion, veComisiones, veTodo } from "@/lib/acceso";
 import { reglasPara } from "@/lib/consultas";
 import { comisionesPorHito, comisionProyectada } from "@/lib/comisiones";
 import { dinero, etiqueta, fecha, fechaLarga, diasHasta, textoDias, porcentaje } from "@/lib/formato";
 import { Aviso, Boton, Cifra, Definicion, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { Anillo } from "@/components/graficas";
 import { LineaTiempo } from "./linea-tiempo";
-import { PanelHito, PanelCompromiso, PanelPago, AccionesCompromiso, BorrarHito } from "./paneles";
+import { PanelHito, PanelCompromiso, AccionesCompromiso, BorrarHito } from "./paneles";
 import { SubirDocumento, BorrarDocumento } from "./documentos";
+import { PanelSolicitud, PanelPagoRecibido, Autorizar } from "@/app/(portal)/pagos/paneles";
+import { esAdmin, esDeCartera, puedeCobrar } from "@/lib/acceso";
 
 export default async function DetalleContrato({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
@@ -20,11 +22,11 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
     include: {
       marca: true,
       director: true,
-      hitos: { orderBy: [{ fechaFacturar: "asc" }, { creadoEn: "asc" }] },
+      hitos: { orderBy: [{ fechaFacturar: "asc" }, { creadoEn: "asc" }], include: { documentos: { select: { id: true, categoria: true, nombre: true } } } },
       compromisos: { orderBy: [{ estado: "asc" }, { fecha: "asc" }], include: { asignadoA: { select: { id: true, nombre: true } } } },
       renovacionDe: { select: { id: true, codigo: true, proyecto: true } },
       renovacion: { select: { id: true, codigo: true, proyecto: true, estado: true } },
-      documentos: { select: { id: true, nombre: true, tipoMime: true, tamano: true, descripcion: true, creadoEn: true, subidoPor: { select: { nombre: true } } }, orderBy: { creadoEn: "desc" } },
+      documentos: { where: { hitoId: null }, select: { id: true, nombre: true, categoria: true, tipoMime: true, tamano: true, descripcion: true, creadoEn: true, subidoPor: { select: { nombre: true } } }, orderBy: { creadoEn: "desc" } },
     },
   });
   if (!c || !autorizaContrato(s, c)) notFound();
@@ -37,11 +39,11 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
   const diferencia = c.monto !== null ? programado - c.monto : null;
   const dias = diasHasta(c.vencimiento, hoy);
   const puedeEditar = puedeCapturar(s);
-  const veComision = s.rol === "DIRECTOR" || veComisionesDeTodos(s);
+  const veComision = veComisiones(s);
 
   const reglas = veComision ? await reglasPara(s, c.directorId) : [];
   const asignables = puedeEditar
-    ? await db.usuario.findMany({ where: { activo: true, rol: { in: ["PRODUCCION", "ADMIN_GENERAL", "DIRECTOR"] } }, select: { id: true, nombre: true, rol: true }, orderBy: [{ rol: "asc" }, { nombre: "asc" }] })
+    ? await db.usuario.findMany({ where: { activo: true, rol: { in: ["PRODUCCION", "CONTENIDOS", "OPERATIVO", "ADMIN_GENERAL", "GERENTE_GENERAL", "DIRECTOR", "ASISTENTE_COMERCIAL"] } }, select: { id: true, nombre: true, rol: true }, orderBy: [{ rol: "asc" }, { nombre: "asc" }] })
     : [];
   const ctx = { id: c.id, directorId: c.directorId, marcaId: c.marcaId, tipo: c.tipo, inicio: c.inicio };
   const comisiones = veComision ? comisionesPorHito(c.hitos.map((h) => ({ ...h, contrato: ctx })), reglas) : [];
@@ -114,6 +116,14 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
               },
             ]}
           />
+          {c.brief ? (
+            <div className="mt-4 rounded border border-linea bg-superficie-2 px-4 py-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-tinta-3">Acuerdos de contenido · visible para producción</div>
+              <p className="mt-1 whitespace-pre-line text-sm text-tinta">{c.brief}</p>
+            </div>
+          ) : (
+            <p className="mt-4 text-xs text-tinta-3">Sin acuerdos de contenido capturados. Producción solo verá el nombre del proyecto y las tareas; captúralos en Editar.</p>
+          )}
           {c.notas ? <p className="mt-4 whitespace-pre-line text-sm text-tinta-2">{c.notas}</p> : null}
         </Tarjeta>
 
@@ -179,6 +189,15 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                       <Td className="text-tinta-2">
                         {etiqueta("estadoFactura", h.estadoFactura)}
                         {h.folioFactura ? <div className="text-xs text-tinta-3">Folio {h.folioFactura}</div> : null}
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {h.documentos.map((d) => (
+                            <a key={d.id} href={`/api/documentos/${d.id}`} target="_blank" rel="noreferrer" className="rounded bg-ok-suave px-1.5 py-0.5 text-[11px] font-medium text-ok hover:underline" title={d.nombre}>
+                              {etiqueta("categoriaDocumento", d.categoria)}
+                            </a>
+                          ))}
+                        </div>
+                        {h.solicitadoEn ? <div className="text-xs text-tinta-3">Solicitado {fecha(h.solicitadoEn)}</div> : null}
+                        {h.autorizadoEn ? <div className="text-xs text-ok">Autorizado {fecha(h.autorizadoEn)}</div> : null}
                       </Td>
                       <Td>
                         <Etiqueta tono={h.estadoPago === "PAGADO" ? "ok" : h.estadoPago === "PARCIAL" ? "alerta" : "neutro"}>{etiqueta("estadoPago", h.estadoPago)}</Etiqueta>
@@ -204,7 +223,10 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                       {puedeEditar ? (
                         <Td>
                           <div className="flex flex-col items-end gap-1">
-                            {pendienteH > 0 ? <PanelPago hitoId={h.id} pendiente={pendienteH} /> : null}
+                            {pendienteH > 0 && !h.solicitadoEn ? <PanelSolicitud hitoId={h.id} fechaFacturar={h.fechaFacturar} folio={h.folioFactura} /> : null}
+                            {pendienteH > 0 && h.solicitadoEn && !h.autorizadoEn && esAdmin(s) ? <Autorizar hitoId={h.id} /> : null}
+                            {pendienteH > 0 && h.solicitadoEn && !h.autorizadoEn && !esAdmin(s) ? <Etiqueta tono="alerta">Esperando autorización</Etiqueta> : null}
+                            {pendienteH > 0 && h.autorizadoEn && (puedeCobrar(s) || esDeCartera(s)) ? <PanelPagoRecibido hitoId={h.id} pendiente={pendienteH} /> : null}
                             <PanelHito contratoId={c.id} hito={h} textoBoton="Editar" />
                             <BorrarHito hitoId={h.id} />
                           </div>
@@ -309,7 +331,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
 
         <Tarjeta titulo="Documentos" descripcion="Contrato firmado y anexos. Solo los ven el director de la cartera y la administración." className="xl:col-span-3">
           {c.documentos.length === 0 ? (
-            <Vacio>Sin documentos. Sube el contrato firmado en PDF.</Vacio>
+            <Vacio>Sin documentos del contrato. Sube el contrato firmado en PDF. Las facturas y comprobantes viven en cada hito de cobro.</Vacio>
           ) : (
             <ul className="-mx-5 divide-y divide-linea/70">
               {c.documentos.map((d) => (
@@ -317,7 +339,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                   <div className="min-w-0">
                     <a href={`/api/documentos/${d.id}`} target="_blank" rel="noreferrer" className="font-medium text-acento hover:underline">{d.nombre}</a>
                     <div className="text-xs text-tinta-3">
-                      {d.descripcion ? `${d.descripcion} · ` : ""}{(d.tamano / 1024 / 1024).toFixed(2)} MB · {fecha(d.creadoEn)}{d.subidoPor ? ` · ${d.subidoPor.nombre}` : ""}
+                      <Etiqueta>{etiqueta("categoriaDocumento", d.categoria)}</Etiqueta> {d.descripcion ? `${d.descripcion} · ` : ""}{(d.tamano / 1024 / 1024).toFixed(2)} MB · {fecha(d.creadoEn)}{d.subidoPor ? ` · ${d.subidoPor.nombre}` : ""}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs">

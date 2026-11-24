@@ -2,8 +2,9 @@ import { z } from "zod";
 
 // Utilidades de captura compartidas por las acciones de servidor.
 
+// Campo opcional: ausente o vacío → null. (Un select que no se renderiza no viaja en el formulario.)
 export const texto = (max = 2000) =>
-  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim() : v), z.string().max(max).nullable());
+  z.preprocess((v) => (v === undefined || v === null ? null : typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v), z.string().max(max).nullable());
 
 export const textoRequerido = (max = 200) => z.string().trim().min(1, "Campo obligatorio.").max(max);
 

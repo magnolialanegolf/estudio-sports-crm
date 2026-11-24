@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Compromiso, HitoCobro } from "@prisma/client";
-import { cambiarEstadoCompromiso, eliminarCompromiso, eliminarHito, guardarCompromiso, guardarHito, registrarPago } from "@/actions/contratos";
+import { cambiarEstadoCompromiso, eliminarCompromiso, eliminarHito, guardarCompromiso, guardarHito } from "@/actions/contratos";
 import { Formulario } from "@/components/formularios";
 import { Area, Casilla, Entrada, Fecha, OPCIONES, Seleccion } from "@/components/campos";
 
@@ -63,34 +63,6 @@ export function PanelHito({ contratoId, hito, textoBoton }: { contratoId: string
   );
 }
 
-export function PanelPago({ hitoId, pendiente }: { hitoId: string; pendiente: number }) {
-  const [abierto, setAbierto] = useState(false);
-  const accion = registrarPago.bind(null, hitoId);
-  return (
-    <>
-      <BotonPanel onClick={() => setAbierto(true)} tono="primario">Registrar pago</BotonPanel>
-      <Dialogo titulo="Registrar pago recibido" abierto={abierto} cerrar={() => setAbierto(false)}>
-        <form
-          action={async (fd) => {
-            await accion(fd);
-            setAbierto(false);
-          }}
-          className="space-y-3"
-        >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Entrada nombre="monto" etiqueta="Monto recibido" valor={pendiente} tipo="number" paso="1" requerido />
-            <Fecha nombre="fecha" etiqueta="Fecha de pago" valor={new Date()} />
-            <Entrada nombre="folio" etiqueta="Folio de factura" placeholder="Opcional" />
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white">Registrar</button>
-          </div>
-        </form>
-      </Dialogo>
-    </>
-  );
-}
-
 export function BorrarHito({ hitoId }: { hitoId: string }) {
   return (
     <form
@@ -109,7 +81,7 @@ type Asignable = { id: string; nombre: string; rol: string };
 export function PanelCompromiso({ contratoId, compromiso, textoBoton, asignables }: { contratoId: string; compromiso?: Compromiso; textoBoton: string; asignables: Asignable[] }) {
   const [abierto, setAbierto] = useState(false);
   const accion = guardarCompromiso.bind(null, contratoId, compromiso?.id ?? null);
-  const etiquetaRol: Record<string, string> = { PRODUCCION: "producción", ADMIN_GENERAL: "administración", DIRECTOR: "director" };
+  const etiquetaRol: Record<string, string> = { PRODUCCION: "producción", CONTENIDOS: "contenidos", OPERATIVO: "operativo", ADMIN_GENERAL: "dirección", GERENTE_GENERAL: "gerencia", DIRECTOR: "director", ASISTENTE_COMERCIAL: "asistente" };
   return (
     <>
       <BotonPanel onClick={() => setAbierto(true)} tono={compromiso ? "neutro" : "primario"}>{textoBoton}</BotonPanel>

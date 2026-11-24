@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { requerirSesion, veComisionesDeTodos, veTodo } from "@/lib/acceso";
+import { requerirSesion, veComisiones, veComisionesDeTodos } from "@/lib/acceso";
 import { comisionesPorHito } from "@/lib/comisiones";
 import { directoresVisibles, hitosVisibles, reglasPara, resumenPorDirector, sumarResumenes } from "@/lib/consultas";
 import { dinero, etiqueta, fecha, porcentaje } from "@/lib/formato";
@@ -13,10 +13,10 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
   const { director } = await searchParams;
 
   // Administración y lectura ven cobros pero no comisiones de otros, salvo autorización del dueño.
-  if (veTodo(s) && !veComisionesDeTodos(s)) {
+  if (!veComisiones(s)) {
     return (
       <Pagina titulo="Comisiones">
-        <Aviso>Las comisiones de los directores solo son visibles para el administrador general.</Aviso>
+        <Aviso>Las comisiones solo son visibles para el director titular y la dirección general.</Aviso>
       </Pagina>
     );
   }

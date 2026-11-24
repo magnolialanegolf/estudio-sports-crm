@@ -107,6 +107,7 @@ export const OPCIONES = {
     { valor: "OTRO", texto: "Otro" },
   ],
   estadoContrato: [
+    { valor: "PROSPECTO", texto: "Prospecto" },
     { valor: "PROPUESTA", texto: "Propuesta" },
     { valor: "PENDIENTE_FIRMA", texto: "Pendiente de firma" },
     { valor: "VIGENTE", texto: "Vigente" },
@@ -127,6 +128,13 @@ export const OPCIONES = {
     { valor: "PARCIAL", texto: "Pago parcial" },
     { valor: "PAGADO", texto: "Pagado" },
   ],
+  categoriaDocumento: [
+    { valor: "CONTRATO", texto: "Contrato firmado" },
+    { valor: "FACTURA_PDF", texto: "Factura PDF" },
+    { valor: "FACTURA_XML", texto: "Factura XML" },
+    { valor: "COMPROBANTE", texto: "Comprobante de pago" },
+    { valor: "OTRO", texto: "Otro" },
+  ],
   modalidad: [
     { valor: "EFECTIVO", texto: "Efectivo" },
     { valor: "ESPECIE", texto: "Especie" },
@@ -146,9 +154,13 @@ export const OPCIONES = {
   ],
   rol: [
     { valor: "ADMIN_GENERAL", texto: "Administrador general" },
+    { valor: "GERENTE_GENERAL", texto: "Gerente general" },
     { valor: "DIRECTOR", texto: "Director comercial" },
-    { valor: "ADMINISTRACION", texto: "Administración" },
+    { valor: "ASISTENTE_COMERCIAL", texto: "Asistente comercial" },
+    { valor: "ADMINISTRACION", texto: "Pagos y administración" },
     { valor: "PRODUCCION", texto: "Producción" },
+    { valor: "CONTENIDOS", texto: "Contenidos" },
+    { valor: "OPERATIVO", texto: "Operativo" },
     { valor: "LECTURA", texto: "Lectura" },
   ],
 };
