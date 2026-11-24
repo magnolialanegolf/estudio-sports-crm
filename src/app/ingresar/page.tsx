@@ -10,7 +10,7 @@ const ERRORES: Record<string, string> = {
   "google-dominio": "Solo pueden entrar cuentas de Google de la empresa.",
   "google-cancelado": "No se completó el ingreso con Google. Inténtalo de nuevo.",
   "google-error": "Google no confirmó la identidad. Inténtalo de nuevo.",
-  "google-no-configurado": "El ingreso con Google no está habilitado en este entorno.",
+  "google-no-configurado": "Se habilita al conectar la cuenta de Google Workspace de la empresa. Mientras tanto, entra con usuario y contraseña.",
 };
 
 export const metadata: Metadata = { title: "Ingresar" };
@@ -32,10 +32,11 @@ export default async function PaginaIngresar({
           <div className="etiqueta-marca mt-1 text-[10px] text-naranja">CRM comercial</div>
         </div>
         <div className="tarjeta rounded-xl border border-linea bg-superficie p-6">
-          {conGoogle ? (
+          {/* El botón se muestra siempre: con credenciales manda a Google; sin ellas explica que falta conectar Workspace. */}
+          {(
             <>
               <a
-                href={`/api/auth/google${destino ? `?destino=${encodeURIComponent(destino)}` : ""}`}
+                href={conGoogle ? `/api/auth/google${destino ? `?destino=${encodeURIComponent(destino)}` : ""}` : "/ingresar?error=google-no-configurado"}
                 className="inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium text-tinta shadow-sm hover:bg-superficie-2"
               >
                 <IconoGoogle />
@@ -50,7 +51,7 @@ export default async function PaginaIngresar({
                 <span className="h-px flex-1 bg-linea" />
               </div>
             </>
-          ) : null}
+          )}
           <FormularioIngreso destino={destino} aviso={error?.startsWith("google") ? undefined : aviso} />
         </div>
         <p className="mt-6 text-center text-xs text-tinta-3">Acceso restringido. La actividad queda registrada en bitácora.</p>
