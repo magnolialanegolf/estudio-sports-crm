@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { requerirSesion, veComisiones, veComisionesDeTodos, veTodo } from "@/lib/acceso";
+import { requerirSesion, veComisiones, veTodo } from "@/lib/acceso";
 import { construirInforme, periodoDesdeParametros } from "@/lib/reportes";
 import { CuerpoInforme } from "@/components/informe";
 import { SelectorPeriodo } from "@/components/selector-periodo";
