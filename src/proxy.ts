@@ -5,7 +5,8 @@ import { COOKIE_SESION, leerSesion } from "@/lib/sesion";
 // Las páginas vuelven a validar con requerirSesion(); esto evita exponer
 // siquiera la estructura del portal a quien no está autenticado.
 // El calendario personal se identifica por liga privada: no lleva cookie (Google, iPhone).
-const PUBLICAS = ["/ingresar", "/api/calendario/"];
+// El ingreso con Google es público por definición: es la ruta para obtener sesión.
+const PUBLICAS = ["/ingresar", "/api/calendario/", "/api/auth/"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

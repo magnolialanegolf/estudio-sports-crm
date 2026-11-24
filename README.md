@@ -57,8 +57,10 @@ Usuarios iniciales: `admin`, `miguel`, `demo`, `produccion`. Las contraseñas se
 1. Base de datos en Neon; copiar la cadena de conexión a `DATABASE_URL`.
 2. Proyecto en Vercel ligado al repositorio, con `DATABASE_URL` y `SESSION_SECRET` como variables de entorno.
 3. El comando de construcción aplica el esquema y carga la semilla solo si la base está vacía (`SEED_FORZAR=1` la recarga). Definir `SEED_CLAVE_ADMIN`, `SEED_CLAVE_MIGUEL` y `SEED_CLAVE_DEMO` antes del primer despliegue.
-4. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
+4. Lector de contratos: `ANTHROPIC_API_KEY`. Cada lectura registra en bitácora sus tokens y su costo.
+5. Ingreso con Google Workspace: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_DOMINIOS`. La credencial se crea en Google Cloud (APIs y servicios → Credenciales → ID de cliente OAuth, tipo aplicación web) con la URI de retorno `https://<dominio>/api/auth/google/callback`. Google solo identifica: entra quien ya existe como usuario activo con ese correo y cuyo dominio está en la lista. El acceso por usuario y contraseña sigue disponible.
+6. Las cuentas de GitHub, Vercel y Neon deben quedar a nombre de Estudio Sports al contratar; durante el piloto viven en Magnolia.
 
 ## Pendientes de la siguiente fase
 
-Envío automático de informes y alertas por correo · sincronización bidireccional con Google Calendar (requiere aplicación en Google Cloud a nombre de Estudio Sports) · almacenamiento de objetos para documentos · alta de los demás directores y de los socios · migración de cuentas a Estudio Sports.
+Envío automático de informes y alertas por correo · sincronización bidireccional con Google Calendar · almacenamiento de objetos para documentos · alta de los demás directores y de los socios · migración de cuentas a Estudio Sports.
