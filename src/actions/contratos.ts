@@ -17,6 +17,7 @@ const esquemaContrato = z.object({
   tipo: z.enum(["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"]),
   estado: z.enum(["PROSPECTO", "PROPUESTA", "PENDIENTE_FIRMA", "VIGENTE", "FINALIZADO", "CANCELADO"]),
   monto: entero(),
+  probabilidad: entero().pipe(z.number().int().min(0, "El avance va de 0 a 100.").max(100, "El avance va de 0 a 100.").nullable()),
   montoConfirmado: casilla(),
   inicio: fechaOpcional(),
   inicioConfirmado: casilla(),

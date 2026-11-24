@@ -11,6 +11,11 @@ import { aplanarRegla, comisionProyectada, comisionesPorHito, resumirComisiones,
 
 export const ESTADOS_ACTIVOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "PROSPECTO"];
 export const ESTADOS_PIPELINE: EstadoContrato[] = ["PROSPECTO", "PROPUESTA", "PENDIENTE_FIRMA"];
+
+// Porcentaje de avance de un contrato: el ajustado si existe, si no el de su etapa.
+export function avance(c: { estado: EstadoContrato; probabilidad?: number | null }): number {
+  return c.probabilidad !== null && c.probabilidad !== undefined ? Math.min(Math.max(c.probabilidad, 0), 100) / 100 : PONDERACION[c.estado];
+}
 export const PONDERACION: Record<EstadoContrato, number> = {
   PROSPECTO: 0.1,
   PROPUESTA: 0.4,
@@ -159,7 +164,7 @@ export async function resumenPorDirector(s: Sesion, directorIds?: string[]): Pro
   const out: ResumenDirector[] = [];
   for (const dir of directores) {
     const [contratos, hitos, reglas, pagos, carteras, compromisosVencidos] = await Promise.all([
-      db.contrato.findMany({ where: { directorId: dir.id }, select: { id: true, estado: true, monto: true, vencimiento: true, marcaId: true, tipo: true, inicio: true, directorId: true } }),
+      db.contrato.findMany({ where: { directorId: dir.id }, select: { id: true, estado: true, monto: true, probabilidad: true, vencimiento: true, marcaId: true, tipo: true, inicio: true, directorId: true } }),
       db.hitoCobro.findMany({
         where: { contrato: { directorId: dir.id } },
         include: { contrato: { select: { id: true, directorId: true, marcaId: true, tipo: true, inicio: true, estado: true } } },
@@ -185,7 +190,7 @@ export async function resumenPorDirector(s: Sesion, directorIds?: string[]): Pro
       contratosPipeline: pipeline.length,
       valorVigente: vigentes.reduce((a, c) => a + (c.monto ?? 0), 0),
       pipelineNominal: pipeline.reduce((a, c) => a + (c.monto ?? 0), 0),
-      pipelinePonderado: pipeline.reduce((a, c) => a + (c.monto ?? 0) * PONDERACION[c.estado], 0),
+      pipelinePonderado: pipeline.reduce((a, c) => a + (c.monto ?? 0) * avance(c), 0),
       cobrado: hitos.reduce((a, h) => a + h.montoRecibido, 0),
       cobradoConfirmado: hitos.filter((h) => h.confirmado).reduce((a, h) => a + h.montoRecibido, 0),
       porCobrar: activos.reduce((a, h) => a + Math.max(h.importe - h.montoRecibido, 0), 0),

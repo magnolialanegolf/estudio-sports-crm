@@ -171,6 +171,7 @@ model Contrato {
   tipo            TipoContrato
   estado          EstadoContrato
   monto           Int?           // sin IVA; null cuando aún no hay propuesta
+  probabilidad    Int?           // porcentaje de avance (0-100) que sustituye al de la etapa en el ponderado
   montoConfirmado Boolean        @default(false)
   inicio          DateTime?
   inicioConfirmado Boolean       @default(false)

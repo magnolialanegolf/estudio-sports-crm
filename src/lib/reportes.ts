@@ -4,7 +4,7 @@ import { es } from "date-fns/locale";
 import type { EstadoContrato } from "@prisma/client";
 import { db } from "./db";
 import type { Sesion } from "./sesion";
-import { antiguedad, ESTADOS_PIPELINE, PONDERACION, reglasPara, resumenPorDirector, sumarResumenes, type ResumenDirector, type TramoAntiguedad } from "./consultas";
+import { antiguedad, avance, ESTADOS_PIPELINE, reglasPara, resumenPorDirector, sumarResumenes, type ResumenDirector, type TramoAntiguedad } from "./consultas";
 import { comisionesPorHito } from "./comisiones";
 
 // Datos de los informes (director → socios, consolidado del administrador).
@@ -148,7 +148,7 @@ export async function construirInforme(s: Sesion, args: { directorIds?: string[]
   const pipeline = ESTADOS_PIPELINE.map((estado) => {
     const cs = contratos.filter((c) => c.estado === estado);
     const nominal = cs.reduce((a, c) => a + (c.monto ?? 0), 0);
-    return { estado, cantidad: cs.length, nominal, ponderado: Math.round(nominal * PONDERACION[estado]) };
+    return { estado, cantidad: cs.length, nominal, ponderado: Math.round(cs.reduce((a, c) => a + (c.monto ?? 0) * avance(c), 0)) };
   });
 
   const renovaciones = contratos

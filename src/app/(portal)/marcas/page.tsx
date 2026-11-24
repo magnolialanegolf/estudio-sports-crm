@@ -3,11 +3,22 @@ import { db } from "@/lib/db";
 import { filtroMarcas, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
 import { dinero, etiqueta } from "@/lib/formato";
 import { Boton, Etiqueta, Pagina, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
+import { BarraFiltros } from "@/components/filtros";
+import { directoresVisibles } from "@/lib/consultas";
 
-export default async function Marcas() {
+export default async function Marcas({ searchParams }: { searchParams: Promise<{ q?: string; director?: string }> }) {
   const s = await requerirSesion();
+  const { q, director } = await searchParams;
+  const global = veTodo(s);
+  const directorId = global ? director || undefined : undefined;
+  const t = (q ?? "").trim();
+  const directores = global ? await directoresVisibles(s) : [];
   const marcas = await db.marca.findMany({
-    where: filtroMarcas(s),
+    where: {
+      ...filtroMarcas(s),
+      ...(directorId ? { carteras: { some: { directorId, hasta: null } } } : {}),
+      ...(t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { sector: { contains: t, mode: "insensitive" } }, { contratos: { some: { OR: [{ proyecto: { contains: t, mode: "insensitive" } }, { talento: { contains: t, mode: "insensitive" } }] } } }] } : {}),
+    },
     include: {
       carteras: { where: { hasta: null }, include: { director: { select: { nombre: true } } } },
       contratos: {
@@ -22,7 +33,7 @@ export default async function Marcas() {
   return (
     <Pagina
       titulo="Marcas"
-      subtitulo={`${marcas.length} marcas en cartera`}
+      subtitulo={`${marcas.length} marca(s)${t || directorId ? " con ese filtro" : " en cartera"}`}
       acciones={
         <>
           <Boton href="/api/exportar/marcas">Exportar CSV</Boton>
@@ -30,9 +41,10 @@ export default async function Marcas() {
         </>
       }
     >
+      <BarraFiltros ruta="/marcas" q={q} director={directorId} directores={global ? directores : undefined} placeholder="Buscar marca, sector, proyecto o talento…" />
       <Tarjeta>
         {marcas.length === 0 ? (
-          <Vacio>Sin marcas en la cartera.</Vacio>
+          <Vacio>{t || directorId ? "Ninguna marca coincide con el filtro." : "Sin marcas en la cartera."}</Vacio>
         ) : (
           <Tabla>
             <thead>

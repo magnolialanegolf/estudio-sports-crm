@@ -1,19 +1,41 @@
 import Link from "next/link";
 import type { EstadoContrato } from "@prisma/client";
 import { db } from "@/lib/db";
-import { filtroContratos, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
+import { filtroContratos, filtroMarcas, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
+import { directoresVisibles } from "@/lib/consultas";
+import { BarraFiltros, condicionBusqueda } from "@/components/filtros";
 import { dinero, etiqueta, fecha, diasHasta } from "@/lib/formato";
 import { Boton, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 
 const ESTADOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "PROSPECTO", "FINALIZADO", "CANCELADO"];
 
-export default async function Contratos({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
+export default async function Contratos({ searchParams }: { searchParams: Promise<{ estado?: string; q?: string; director?: string; marca?: string }> }) {
   const s = await requerirSesion();
-  const { estado } = await searchParams;
+  const { estado, q, director, marca } = await searchParams;
   const filtroEstado = ESTADOS.includes(estado as EstadoContrato) ? (estado as EstadoContrato) : undefined;
+  const global = veTodo(s);
+  const directorId = global ? director || undefined : undefined;
+  const liga = (e?: EstadoContrato) => {
+    const p = new URLSearchParams();
+    if (e) p.set("estado", e);
+    if (q) p.set("q", q);
+    if (directorId) p.set("director", directorId);
+    if (marca) p.set("marca", marca);
+    const qs = p.toString();
+    return qs ? `/contratos?${qs}` : "/contratos";
+  };
 
+  const [directores, marcas] = await Promise.all([
+    global ? directoresVisibles(s) : Promise.resolve([]),
+    db.marca.findMany({ where: filtroMarcas(s), select: { id: true, nombre: true }, orderBy: [{ esDemo: "asc" }, { nombre: "asc" }] }),
+  ]);
   const contratos = await db.contrato.findMany({
-    where: { ...filtroContratos(s), ...(filtroEstado ? { estado: filtroEstado } : { estado: { not: "CANCELADO" } }) },
+    where: {
+      ...(directorId ? { directorId } : filtroContratos(s)),
+      ...(marca ? { marcaId: marca } : {}),
+      ...condicionBusqueda(q),
+      ...(filtroEstado ? { estado: filtroEstado } : { estado: { not: "CANCELADO" } }),
+    },
     include: {
       marca: { select: { nombre: true, esDemo: true } },
       director: { select: { nombre: true } },
@@ -37,14 +59,15 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
         </>
       }
     >
+      <BarraFiltros ruta="/contratos" q={q} director={directorId} directores={global ? directores : undefined} marca={marca} marcas={marcas} extra={{ estado: filtroEstado }} />
       <div className="no-imprimir mb-4 flex flex-wrap gap-1.5">
-        <Link href="/contratos" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!filtroEstado ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
+        <Link href={liga()} className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!filtroEstado ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
           Activos e históricos
         </Link>
         {ESTADOS.map((e) => (
           <Link
             key={e}
-            href={`/contratos?estado=${e}`}
+            href={liga(e)}
             className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${filtroEstado === e ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}
           >
             {etiqueta("estadoContrato", e)}
@@ -54,7 +77,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
 
       <Tarjeta>
         {contratos.length === 0 ? (
-          <Vacio>Sin contratos con ese estado.</Vacio>
+          <Vacio>Ningún contrato coincide con el filtro.</Vacio>
         ) : (
           <Tabla>
             <thead>

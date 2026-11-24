@@ -13,6 +13,7 @@ type ContratoBase = {
   tipo?: string;
   estado?: string;
   monto?: number | null;
+  probabilidad?: number | null;
   montoConfirmado?: boolean;
   inicio?: Date | null;
   inicioConfirmado?: boolean;
@@ -53,6 +54,7 @@ export function FormularioContrato({
         <Seleccion nombre="tipo" etiqueta="Tipo" valor={contrato?.tipo ?? "COMERCIAL"} opciones={OPCIONES.tipo} requerido />
         <Seleccion nombre="estado" etiqueta="Estado" valor={contrato?.estado ?? "PROPUESTA"} opciones={OPCIONES.estadoContrato} requerido />
         <Entrada nombre="monto" etiqueta="Monto sin IVA (MXN)" valor={contrato?.monto ?? ""} tipo="number" paso="1" placeholder="0" />
+        <Entrada nombre="probabilidad" etiqueta="Avance de cierre (%)" valor={contrato?.probabilidad ?? ""} tipo="number" paso="1" placeholder="Según etapa" ayuda="Vacío usa el de la etapa: prospecto 10, propuesta 40, por firmar 80. Pondera el pipeline." />
         <Entrada nombre="duracionMeses" etiqueta="Duración (meses)" valor={contrato?.duracionMeses ?? ""} tipo="number" paso="1" />
         <Fecha nombre="inicio" etiqueta="Inicio" valor={contrato?.inicio} />
         <Fecha nombre="vencimiento" etiqueta="Vencimiento" valor={contrato?.vencimiento} />
