@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { EstadoContrato } from "@prisma/client";
+import type { EstadoContrato, TipoContrato } from "@prisma/client";
 import { db } from "@/lib/db";
 import { filtroContratos, filtroMarcas, puedeCapturar, requerirSesion, veTodo } from "@/lib/acceso";
 import { directoresVisibles } from "@/lib/consultas";
@@ -8,10 +8,12 @@ import { dinero, etiqueta, fecha, diasHasta } from "@/lib/formato";
 import { Boton, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 
 const ESTADOS: EstadoContrato[] = ["VIGENTE", "PENDIENTE_FIRMA", "PROPUESTA", "PROSPECTO", "FINALIZADO", "CANCELADO"];
+const TIPOS: TipoContrato[] = ["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"];
 
-export default async function Contratos({ searchParams }: { searchParams: Promise<{ estado?: string; q?: string; director?: string; marca?: string }> }) {
+export default async function Contratos({ searchParams }: { searchParams: Promise<{ estado?: string; q?: string; director?: string; marca?: string; tipo?: string }> }) {
   const s = await requerirSesion();
-  const { estado, q, director, marca } = await searchParams;
+  const { estado, q, director, marca, tipo } = await searchParams;
+  const tipoFiltro = TIPOS.includes(tipo as TipoContrato) ? (tipo as TipoContrato) : undefined;
   const filtroEstado = ESTADOS.includes(estado as EstadoContrato) ? (estado as EstadoContrato) : undefined;
   const global = veTodo(s);
   const directorId = global ? director || undefined : undefined;
@@ -21,6 +23,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
     if (q) p.set("q", q);
     if (directorId) p.set("director", directorId);
     if (marca) p.set("marca", marca);
+    if (tipoFiltro) p.set("tipo", tipoFiltro);
     const qs = p.toString();
     return qs ? `/contratos?${qs}` : "/contratos";
   };
@@ -33,6 +36,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
     where: {
       ...(directorId ? { directorId } : filtroContratos(s)),
       ...(marca ? { marcaId: marca } : {}),
+      ...(tipoFiltro ? { tipo: tipoFiltro } : {}),
       ...condicionBusqueda(q),
       ...(filtroEstado ? { estado: filtroEstado } : { estado: { not: "CANCELADO" } }),
     },
@@ -59,7 +63,7 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
         </>
       }
     >
-      <BarraFiltros ruta="/contratos" q={q} director={directorId} directores={global ? directores : undefined} marca={marca} marcas={marcas} extra={{ estado: filtroEstado }} />
+      <BarraFiltros ruta="/contratos" q={q} director={directorId} directores={global ? directores : undefined} marca={marca} marcas={marcas} tipo={tipoFiltro} tipos={TIPOS.map((t) => ({ valor: t, texto: etiqueta("tipo", t) }))} extra={{ estado: filtroEstado }} />
       <div className="no-imprimir mb-4 flex flex-wrap gap-1.5">
         <Link href={liga()} className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!filtroEstado ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
           Activos e históricos

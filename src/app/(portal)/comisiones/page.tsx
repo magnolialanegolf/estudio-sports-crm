@@ -7,6 +7,12 @@ import { dinero, etiqueta, fecha, porcentaje } from "@/lib/formato";
 import { Aviso, Boton, Cifra, Etiqueta, Pagina, PorConfirmar, Tabla, Tarjeta, Td, Th, Vacio } from "@/components/ui";
 import { FiltroDirector } from "@/components/filtro-director";
 import { BorrarPagoComision } from "./paneles";
+import { PanelPagarComision } from "./panel-pago";
+import { esAdmin } from "@/lib/acceso";
+
+function contratoPorIdTipo(hitos: { contrato: { id: string; tipo: string } }[], id: string) {
+  return hitos.find((h) => h.contrato.id === id)?.contrato.tipo ?? "OTRO";
+}
 
 export default async function Comisiones({ searchParams }: { searchParams: Promise<{ director?: string }> }) {
   const s = await requerirSesion();
@@ -38,7 +44,10 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
     }),
   ]);
   const reglas = directorId ? await reglasPara(s, directorId) : await reglasPara(s);
-  const porHito = comisionesPorHito(hitos, reglas);
+  const porHito = comisionesPorHito(hitos, reglas, pagos);
+  const admin = esAdmin(s);
+  // Corte por tipo de contrato: menciones comerciales, pódcast y embajadurías se pagan con reglas distintas.
+  const porTipo = Array.from(porHito.reduce((m, c) => { const k = contratoPorIdTipo(hitos, c.contratoId); const v = m.get(k) ?? { cobrado: 0, comision: 0, pagada: 0, cobros: 0 }; v.cobrado += c.montoCobrado; v.comision += c.comision; v.pagada += c.pagada; v.cobros += 1; m.set(k, v); return m; }, new Map<string, { cobrado: number; comision: number; pagada: number; cobros: number }>()));
   const contratoPorId = new Map(hitos.map((h) => [h.contrato.id, h.contrato]));
 
   return (
@@ -73,8 +82,41 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
         </div>
       ) : null}
 
+      <div className="mb-5">
+        <Tarjeta titulo="Por tipo de contrato" descripcion="Cada tipo tiene su regla: comercial (menciones y cápsulas), pódcast, embajaduría.">
+          {porTipo.length === 0 ? (
+            <Vacio>Sin cobros.</Vacio>
+          ) : (
+            <Tabla>
+              <thead>
+                <tr>
+                  <Th>Tipo</Th>
+                  <Th derecha>Cobros</Th>
+                  <Th derecha>Cobrado</Th>
+                  <Th derecha>Comisión devengada</Th>
+                  <Th derecha>Pagada</Th>
+                  <Th derecha>Pendiente</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {porTipo.map(([tipo, v]) => (
+                  <tr key={tipo}>
+                    <Td className="font-medium">{etiqueta("tipo", tipo as "COMERCIAL" | "PODCAST" | "EMBAJADURIA" | "OTRO")}</Td>
+                    <Td derecha>{v.cobros}</Td>
+                    <Td derecha>{dinero(v.cobrado)}</Td>
+                    <Td derecha>{dinero(v.comision)}</Td>
+                    <Td derecha>{dinero(v.pagada)}</Td>
+                    <Td derecha className={v.comision - v.pagada > 0 ? "font-medium text-acento" : ""}>{dinero(Math.max(v.comision - v.pagada, 0))}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Tabla>
+          )}
+        </Tarjeta>
+      </div>
+
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        <Tarjeta titulo="Devengada por cobro" className="xl:col-span-3">
+        <Tarjeta titulo="Devengada por cobro" descripcion="Cada factura cobrada genera su comisión; se paga cobro por cobro." className="xl:col-span-3">
           {porHito.length === 0 ? (
             <Vacio>Sin cobros registrados.</Vacio>
           ) : (
@@ -86,6 +128,7 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
                   <Th derecha>Cobrado</Th>
                   <Th>Regla</Th>
                   <Th derecha>Comisión</Th>
+                  <Th>Pago al director</Th>
                 </tr>
               </thead>
               <tbody>
@@ -109,6 +152,18 @@ export default async function Comisiones({ searchParams }: { searchParams: Promi
                         {c.regla ? `${porcentaje(c.regla.pctDirector)} tras ${porcentaje(c.regla.pctCasa)}` : <Etiqueta tono="riesgo">sin regla</Etiqueta>}
                       </Td>
                       <Td derecha className="font-medium">{dinero(c.comision)}</Td>
+                      <Td>
+                        {c.comision === 0 ? (
+                          <span className="text-xs text-tinta-3">—</span>
+                        ) : c.pagada >= c.comision ? (
+                          <Etiqueta tono="ok">Pagada</Etiqueta>
+                        ) : c.pagada > 0 ? (
+                          <Etiqueta tono="alerta">Parcial · faltan {dinero(c.comision - c.pagada)}</Etiqueta>
+                        ) : (
+                          <Etiqueta tono="acento">Pendiente</Etiqueta>
+                        )}
+                        {admin && c.comision > c.pagada ? <div className="mt-1"><PanelPagarComision hitoId={c.hitoId} pendiente={c.comision - c.pagada} concepto={`${k.marca.nombre} · ${c.concepto}`} /></div> : null}
+                      </Td>
                     </tr>
                   );
                 })}

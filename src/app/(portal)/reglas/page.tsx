@@ -18,7 +18,7 @@ export default async function Reglas() {
     <Pagina titulo="Reglas de comisión" subtitulo="Solo el administrador general fija las reglas. Los directores las ven, no las editan.">
       <div className="mb-5">
         <Aviso>
-          Cómo se aplica: para cada cobro se toma la regla <strong>más específica</strong> vigente en la fecha de pago (director + marca + tipo, luego director + marca, luego director + tipo, luego director). Comisión = cobrado × (1 − retención de la casa) × porcentaje del director. Un cambio de porcentaje se registra como nueva regla con fecha; las comisiones ya devengadas no se reescriben.
+          Cómo se aplica: para cada cobro se toma la regla <strong>más específica</strong> vigente en la fecha de pago (director + marca + tipo, luego director + marca, luego director + tipo, luego director). Comisión = cobrado × (1 − retención de la casa) × porcentaje del director. Un cambio de porcentaje se registra como nueva regla con fecha; las comisiones ya devengadas no se reescriben. <strong>La comisión se devenga por cada cobro</strong>: si la marca paga mensual, semestral, anual o todo el contrato de una vez, la comisión sigue el mismo ritmo y se paga cobro por cobro desde Comisiones. Conviene una regla por tipo de contrato: menciones y cápsulas comerciales, pódcast y embajadurías suelen llevar porcentajes distintos.
         </Aviso>
       </div>
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

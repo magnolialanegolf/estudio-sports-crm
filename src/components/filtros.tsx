@@ -11,6 +11,8 @@ export function BarraFiltros({
   directores,
   marca,
   marcas,
+  tipo,
+  tipos,
   extra,
   placeholder = "Buscar marca, proyecto, talento o código…",
 }: {
@@ -20,10 +22,12 @@ export function BarraFiltros({
   directores?: Opcion[];
   marca?: string;
   marcas?: Opcion[];
+  tipo?: string;
+  tipos?: { valor: string; texto: string }[];
   extra?: Record<string, string | undefined>;
   placeholder?: string;
 }) {
-  const activo = Boolean(q || director || marca);
+  const activo = Boolean(q || director || marca || tipo);
   const campo = "campo h-9 !py-0 text-sm";
   return (
     <form method="get" action={ruta} className="no-imprimir mb-4 flex flex-wrap items-end gap-2">
@@ -58,6 +62,19 @@ export function BarraFiltros({
             {marcas.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {tipos ? (
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-tinta-3">Tipo</span>
+          <select name="tipo" defaultValue={tipo ?? ""} className={`${campo} !w-auto`}>
+            <option value="">Todos</option>
+            {tipos.map((t) => (
+              <option key={t.valor} value={t.valor}>
+                {t.texto}
               </option>
             ))}
           </select>

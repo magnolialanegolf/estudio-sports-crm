@@ -8,11 +8,12 @@ export default async function NuevoContrato({ searchParams }: { searchParams: Pr
   const s = await requerirSesion();
   if (!puedeCapturar(s)) redirect("/contratos");
   const { marca, renueva } = await searchParams;
-  const [marcas, directores, previos, base] = await Promise.all([
+  const [marcas, directores, previos, base, podcasts] = await Promise.all([
     db.marca.findMany({ where: filtroMarcas(s), orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
     veTodo(s) ? db.director.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }) : Promise.resolve([]),
     db.contrato.findMany({ where: { ...filtroContratos(s), renovacion: null }, select: { id: true, codigo: true, proyecto: true, marca: { select: { nombre: true } } }, orderBy: { codigo: "asc" } }),
     renueva ? db.contrato.findUnique({ where: { id: renueva } }) : Promise.resolve(null),
+    db.podcast.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
   ]);
   return (
     <Pagina titulo="Nuevo contrato" subtitulo="Captura la propuesta o el contrato. Los hitos de cobro y compromisos se agregan después, en el detalle.">
@@ -21,6 +22,7 @@ export default async function NuevoContrato({ searchParams }: { searchParams: Pr
           global={veTodo(s)}
           marcas={marcas}
           directores={directores}
+          podcasts={podcasts}
           contratosPrevios={previos.map((c) => ({ id: c.id, texto: `${c.marca.nombre} · ${c.proyecto} (${c.codigo})` }))}
           contrato={
             base
@@ -28,6 +30,7 @@ export default async function NuevoContrato({ searchParams }: { searchParams: Pr
                   marcaId: base.marcaId,
                   directorId: base.directorId,
                   tipo: base.tipo,
+                  podcastId: base.podcastId,
                   estado: "PROPUESTA",
                   proyecto: `Renovación · ${base.proyecto}`,
                   monto: base.monto,

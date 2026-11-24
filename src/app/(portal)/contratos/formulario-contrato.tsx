@@ -11,6 +11,7 @@ type ContratoBase = {
   directorId?: string;
   proyecto?: string;
   tipo?: string;
+  podcastId?: string | null;
   estado?: string;
   monto?: number | null;
   probabilidad?: number | null;
@@ -33,12 +34,14 @@ export function FormularioContrato({
   marcas,
   directores,
   contratosPrevios,
+  podcasts = [],
   global,
 }: {
   contrato?: ContratoBase;
   marcas: { id: string; nombre: string }[];
   directores: { id: string; nombre: string }[];
   contratosPrevios: { id: string; texto: string }[];
+  podcasts?: { id: string; nombre: string }[];
   global: boolean;
 }) {
   const accion = guardarContrato.bind(null, contrato?.id ?? null);
@@ -52,6 +55,7 @@ export function FormularioContrato({
         ) : null}
         <Entrada nombre="proyecto" etiqueta="Proyecto" valor={contrato?.proyecto} requerido className="sm:col-span-2" placeholder="Comercial 2027–2028" />
         <Seleccion nombre="tipo" etiqueta="Tipo" valor={contrato?.tipo ?? "COMERCIAL"} opciones={OPCIONES.tipo} requerido />
+        <Seleccion nombre="podcastId" etiqueta="Pódcast (si es contrato de pódcast)" valor={contrato?.podcastId} opciones={podcasts.map((p) => ({ valor: p.id, texto: p.nombre }))} vacio="No aplica" ayuda="Liga el contrato al programa para medir cuánto deja cada pódcast." />
         <Seleccion nombre="estado" etiqueta="Estado" valor={contrato?.estado ?? "PROPUESTA"} opciones={OPCIONES.estadoContrato} requerido />
         <Entrada nombre="monto" etiqueta="Monto sin IVA (MXN)" valor={contrato?.monto ?? ""} tipo="number" paso="1" placeholder="0" />
         <Entrada nombre="probabilidad" etiqueta="Avance de cierre (%)" valor={contrato?.probabilidad ?? ""} tipo="number" paso="1" placeholder="Según etapa" ayuda="Vacío usa el de la etapa: prospecto 10, propuesta 40, por firmar 80. Pondera el pipeline." />

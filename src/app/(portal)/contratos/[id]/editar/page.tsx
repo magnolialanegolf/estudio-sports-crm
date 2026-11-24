@@ -12,7 +12,7 @@ export default async function EditarContrato({ params }: { params: Promise<{ id:
   const c = await db.contrato.findUnique({ where: { id } });
   if (!c || !autorizaContrato(s, c)) notFound();
   if (!puedeCapturar(s)) redirect(`/contratos/${id}`);
-  const [marcas, directores, previos] = await Promise.all([
+  const [marcas, directores, previos, podcasts] = await Promise.all([
     db.marca.findMany({ where: filtroMarcas(s), orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
     veTodo(s) ? db.director.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }) : Promise.resolve([]),
     db.contrato.findMany({
@@ -20,6 +20,7 @@ export default async function EditarContrato({ params }: { params: Promise<{ id:
       select: { id: true, codigo: true, proyecto: true, marca: { select: { nombre: true } } },
       orderBy: { codigo: "asc" },
     }),
+    db.podcast.findMany({ where: { OR: [{ activo: true }, { id: c.podcastId ?? "" }] }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
   ]);
   return (
     <Pagina
@@ -32,7 +33,7 @@ export default async function EditarContrato({ params }: { params: Promise<{ id:
       }
     >
       <Tarjeta>
-        <FormularioContrato global={veTodo(s)} marcas={marcas} directores={directores} contratosPrevios={previos.map((p) => ({ id: p.id, texto: `${p.marca.nombre} · ${p.proyecto} (${p.codigo})` }))} contrato={c} />
+        <FormularioContrato global={veTodo(s)} marcas={marcas} directores={directores} podcasts={podcasts} contratosPrevios={previos.map((p) => ({ id: p.id, texto: `${p.marca.nombre} · ${p.proyecto} (${p.codigo})` }))} contrato={c} />
       </Tarjeta>
     </Pagina>
   );

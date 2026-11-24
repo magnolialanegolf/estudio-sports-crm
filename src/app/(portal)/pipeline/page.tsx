@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { EstadoContrato } from "@prisma/client";
+import type { EstadoContrato, TipoContrato } from "@prisma/client";
 import { db } from "@/lib/db";
 import { filtroContratos, filtroMarcas, puedeCapturar, requerirComercial, veTodo } from "@/lib/acceso";
 import { avance, directoresVisibles, PONDERACION } from "@/lib/consultas";
@@ -17,9 +17,12 @@ const ETAPAS: { estado: EstadoContrato; descripcion: string; tono: "neutro" | "a
 ];
 const ABIERTAS: EstadoContrato[] = ["PROSPECTO", "PROPUESTA", "PENDIENTE_FIRMA"];
 
-export default async function Pipeline({ searchParams }: { searchParams: Promise<{ q?: string; director?: string; marca?: string }> }) {
+const TIPOS: TipoContrato[] = ["COMERCIAL", "PODCAST", "EMBAJADURIA", "OTRO"];
+
+export default async function Pipeline({ searchParams }: { searchParams: Promise<{ q?: string; director?: string; marca?: string; tipo?: string }> }) {
   const s = await requerirComercial();
-  const { q, director, marca } = await searchParams;
+  const { q, director, marca, tipo } = await searchParams;
+  const tipoFiltro = TIPOS.includes(tipo as TipoContrato) ? (tipo as TipoContrato) : undefined;
   const global = veTodo(s);
   const directorId = global ? director || undefined : undefined;
 
@@ -28,6 +31,7 @@ export default async function Pipeline({ searchParams }: { searchParams: Promise
       where: {
         ...(directorId ? { directorId } : filtroContratos(s)),
         ...(marca ? { marcaId: marca } : {}),
+        ...(tipoFiltro ? { tipo: tipoFiltro } : {}),
         ...condicionBusqueda(q),
         estado: { in: ETAPAS.map((e) => e.estado) },
       },
@@ -68,7 +72,7 @@ export default async function Pipeline({ searchParams }: { searchParams: Promise
       subtitulo="Qué se está vendiendo, cuánto vale y qué tan cerca está de cerrarse."
       acciones={puedeCapturar(s) ? <Boton href="/contratos/nuevo" tipo="primario">Nuevo prospecto</Boton> : undefined}
     >
-      <BarraFiltros ruta="/pipeline" q={q} director={directorId} directores={global ? directores : undefined} marca={marca} marcas={marcas} />
+      <BarraFiltros ruta="/pipeline" q={q} director={directorId} directores={global ? directores : undefined} marca={marca} marcas={marcas} tipo={tipoFiltro} tipos={TIPOS.map((t) => ({ valor: t, texto: etiqueta("tipo", t) }))} />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Cifra etiqueta="Oportunidades abiertas" valor={abiertos.length} icono="pipeline" nota={`${abiertos.filter((c) => !c.monto).length} sin monto`} />

@@ -40,6 +40,16 @@ export default async function Reportes() {
             </div>
             {!veComisionesDeTodos(s) ? <p className="mt-3 text-xs text-tinta-3">Tu rol no incluye comisiones; el informe las omite.</p> : null}
           </Tarjeta>
+        ) : null}
+        {global ? (
+          <Tarjeta titulo="Reporte por pódcast" descripcion="Cuánto deja cada programa: marcas, cobrado, comisiones y neto para la casa, por periodo.">
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/reportes/podcasts?periodo=mes" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Mes</Link>
+              <Link href="/reportes/podcasts?periodo=trimestre" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Trimestre</Link>
+              <Link href="/reportes/podcasts?periodo=anio" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Año</Link>
+              <Link href="/reportes/podcasts?periodo=todo" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Histórico</Link>
+            </div>
+          </Tarjeta>
         ) : (
           <Tarjeta titulo="Exportaciones" descripcion="Datos de tu cartera en CSV para Excel.">
             <div className="flex flex-wrap gap-2 text-sm">

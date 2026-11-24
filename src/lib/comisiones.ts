@@ -67,14 +67,17 @@ export type ComisionHito = {
   confirmado: boolean;
   regla: ReglaPlano | null;
   comision: number; // 0 si no hay regla
+  pagada: number; // pagos de comisión ligados a este cobro
 };
 
 type HitoConContrato = HitoCobro & {
   contrato: { id: string; directorId: string; marcaId: string; tipo: TipoContrato; inicio: Date | null };
 };
 
-// Comisión por cada hito con dinero recibido.
-export function comisionesPorHito(hitos: HitoConContrato[], reglas: ReglaPlano[]): ComisionHito[] {
+// Comisión por cada hito con dinero recibido. `pagos` liga lo ya pagado al cobro que lo generó.
+export function comisionesPorHito(hitos: HitoConContrato[], reglas: ReglaPlano[], pagos: { hitoId: string | null; monto: number }[] = []): ComisionHito[] {
+  const pagadoPorHito = new Map<string, number>();
+  for (const p of pagos) if (p.hitoId) pagadoPorHito.set(p.hitoId, (pagadoPorHito.get(p.hitoId) ?? 0) + p.monto);
   return hitos
     .filter((h) => h.montoRecibido > 0)
     .map((h) => {
@@ -95,6 +98,7 @@ export function comisionesPorHito(hitos: HitoConContrato[], reglas: ReglaPlano[]
         confirmado: h.confirmado,
         regla,
         comision: regla ? calcularComision(h.montoRecibido, regla) : 0,
+        pagada: pagadoPorHito.get(h.id) ?? 0,
       };
     });
 }

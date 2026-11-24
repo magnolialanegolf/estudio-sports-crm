@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
+import { notificar } from "@/lib/avisos";
 import { requerirAdmin } from "@/lib/acceso";
 import { casilla, deFormulario, enteroRequerido, fechaOpcional, fechaRequerida, porcentajeFraccion, primerError, texto, textoRequerido, type Resultado } from "./util";
 
@@ -127,6 +128,29 @@ export async function registrarPagoComision(_prev: Resultado, fd: FormData): Pro
   await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "pagoComision", entidadId: p.id, detalle: { monto: parse.data.monto, directorId: parse.data.directorId } });
   revalidatePath("/comisiones");
   revalidatePath("/tablero");
+  return { ok: true };
+}
+
+// Pago de comisión ligado a un cobro: por cada factura cobrada se paga su porcentaje.
+export async function pagarComisionHito(hitoId: string, _prev: Resultado, fd: FormData): Promise<Resultado> {
+  const s = await requerirAdmin();
+  const h = await db.hitoCobro.findUnique({ where: { id: hitoId }, include: { contrato: { select: { id: true, directorId: true, marca: { select: { nombre: true } } } }, pagosComision: { select: { monto: true } } } });
+  if (!h) return { error: "Cobro no encontrado." };
+  if (h.montoRecibido <= 0) return { error: "Este cobro aún no tiene dinero recibido; no hay comisión que pagar." };
+  const monto = Math.round(Number(String(fd.get("monto") ?? "").replace(/[^\d.]/g, "")));
+  if (!Number.isFinite(monto) || monto <= 0) return { error: "Indica el monto pagado." };
+  const fechaStr = String(fd.get("fechaPago") ?? "");
+  const modalidad = (["EFECTIVO", "ESPECIE", "ACCIONES"].includes(String(fd.get("modalidad"))) ? String(fd.get("modalidad")) : "EFECTIVO") as "EFECTIVO" | "ESPECIE" | "ACCIONES";
+  const notas = String(fd.get("notas") ?? "").trim().slice(0, 1000) || null;
+  const p = await db.pagoComision.create({
+    data: { directorId: h.contrato.directorId, contratoId: h.contrato.id, hitoId, concepto: `Comisión · ${h.contrato.marca.nombre} · ${h.concepto}`, monto, modalidad, fechaPago: fechaStr ? new Date(`${fechaStr}T12:00:00.000Z`) : new Date(), notas, confirmado: true },
+  });
+  const director = (await db.usuario.findMany({ where: { activo: true, directorId: h.contrato.directorId }, select: { id: true } })).map((u) => u.id);
+  await notificar(director, `Comisión pagada: $${monto.toLocaleString("es-MX")} por ${h.contrato.marca.nombre} · ${h.concepto}.`, "/comisiones", s.usuarioId);
+  await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "pagoComision", entidadId: p.id, detalle: { monto, hitoId, directorId: h.contrato.directorId } });
+  revalidatePath("/comisiones");
+  revalidatePath("/tablero");
+  revalidatePath(`/contratos/${h.contrato.id}`);
   return { ok: true };
 }
 
@@ -329,4 +353,36 @@ export async function regenerarDemo(_prev: Resultado, fd: FormData): Promise<Res
   revalidatePath("/marcas");
   revalidatePath("/contratos");
   return { ok: true };
+}
+
+// ───────── Pódcast ─────────
+
+const esquemaPodcast = z.object({ nombre: textoRequerido(120), talento: texto(200), descripcion: texto(2000), activo: casilla() });
+
+export async function guardarPodcast(id: string | null, _prev: Resultado, fd: FormData): Promise<Resultado> {
+  const s = await requerirAdmin();
+  const parse = esquemaPodcast.safeParse(deFormulario(fd));
+  if (!parse.success) return { error: primerError(parse.error) };
+  const d = parse.data;
+  const repetido = await db.podcast.findFirst({ where: { nombre: { equals: d.nombre, mode: "insensitive" }, ...(id ? { id: { not: id } } : {}) }, select: { id: true } });
+  if (repetido) return { error: "Ya existe un pódcast con ese nombre." };
+  if (id) {
+    await db.podcast.update({ where: { id }, data: d });
+    await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "podcast", entidadId: id, detalle: { nombre: d.nombre, activo: d.activo } });
+  } else {
+    const p = await db.podcast.create({ data: { nombre: d.nombre, talento: d.talento, descripcion: d.descripcion, activo: true } });
+    await registrar({ usuarioId: s.usuarioId, accion: "crear", entidad: "podcast", entidadId: p.id, detalle: { nombre: d.nombre } });
+  }
+  revalidatePath("/podcasts");
+  revalidatePath("/reportes/podcasts");
+  return { ok: true };
+}
+
+export async function eliminarPodcast(id: string) {
+  const s = await requerirAdmin();
+  const ligados = await db.contrato.count({ where: { podcastId: id } });
+  if (ligados > 0) return;
+  await db.podcast.delete({ where: { id } });
+  await registrar({ usuarioId: s.usuarioId, accion: "eliminar", entidad: "podcast", entidadId: id });
+  revalidatePath("/podcasts");
 }

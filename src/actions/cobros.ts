@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
 import { autorizaContrato, esAdmin, puedeCapturar, puedeCobrar, requerirSesion } from "@/lib/acceso";
 import { notificar, responsablesDeContrato } from "@/lib/avisos";
+import { calcularComision, reglaAplicable } from "@/lib/comisiones";
+import { reglasPara } from "@/lib/consultas";
 import { guardarArchivo } from "./documentos";
 import type { Resultado } from "./util";
 
@@ -128,6 +130,18 @@ export async function registrarPagoCobro(hitoId: string, _prev: Resultado, fd: F
     },
   });
   await notificar([...(await responsablesDeContrato(h.contrato.directorId)), ...(await usuariosDePagos())], `${recibido >= h.importe ? "Pago registrado" : "Pago parcial registrado"}: ${h.contrato.marca.nombre} · ${h.concepto} · $${monto.toLocaleString("es-MX")}`, `/contratos/${h.contrato.id}`, s.usuarioId);
+  // La comisión se devenga con el cobro: dirección y director lo ven en el momento.
+  const contratoComision = await db.contrato.findUnique({ where: { id: h.contrato.id }, select: { directorId: true, marcaId: true, tipo: true, inicio: true, director: { select: { nombre: true } } } });
+  if (contratoComision) {
+    const reglas = await reglasPara(s, contratoComision.directorId);
+    const regla = reglaAplicable(reglas, { directorId: contratoComision.directorId, marcaId: contratoComision.marcaId, tipo: contratoComision.tipo, fecha: fechaStr ? new Date(`${fechaStr}T12:00:00.000Z`) : new Date() });
+    const comision = regla ? calcularComision(monto, regla) : 0;
+    const admins = (await db.usuario.findMany({ where: { activo: true, rol: "ADMIN_GENERAL" }, select: { id: true } })).map((u) => u.id);
+    const director = (await db.usuario.findMany({ where: { activo: true, directorId: contratoComision.directorId }, select: { id: true } })).map((u) => u.id);
+    await notificar([...admins, ...director], regla
+      ? `Comisión devengada por este cobro: $${comision.toLocaleString("es-MX")} para ${contratoComision.director.nombre} (${Math.round(regla.pctDirector * 100)} % tras ${Math.round(regla.pctCasa * 100)} % de casa) · ${h.contrato.marca.nombre} · ${h.concepto}. Pendiente de pagar.`
+      : `Cobro sin regla de comisión: ${h.contrato.marca.nombre} · ${h.concepto}. Fija la regla para ${contratoComision.director.nombre}.`, "/comisiones", null);
+  }
   await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "hito", entidadId: hitoId, detalle: { paso: "pago", monto, folio, confirmado: esPagos } });
   revalidar(h.contrato.id);
   return { ok: true };

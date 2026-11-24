@@ -37,6 +37,7 @@ const ADMINISTRACION: Enlace[] = [
   { href: "/tablero", texto: "Tablero", icono: "tablero", roles: ["ADMIN_GENERAL", "GERENTE_GENERAL", "ADMINISTRACION", "LECTURA"] },
   { href: "/directores", texto: "Directores", icono: "directores", roles: ["ADMIN_GENERAL"] },
   { href: "/reglas", texto: "Reglas de comisión", icono: "reglas", roles: ["ADMIN_GENERAL"] },
+  { href: "/podcasts", texto: "Pódcast", icono: "marcas", roles: ["ADMIN_GENERAL"] },
   { href: "/usuarios", texto: "Usuarios", icono: "usuarios", roles: ["ADMIN_GENERAL"] },
   { href: "/bitacora", texto: "Bitácora", icono: "bitacora", roles: ["ADMIN_GENERAL"] },
   { href: "/respaldo", texto: "Respaldo", icono: "bitacora", roles: ["ADMIN_GENERAL"] },
