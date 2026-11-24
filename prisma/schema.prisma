@@ -179,6 +179,8 @@ model Contrato {
   duracionMeses   Int?
   talento         String?
   brief           String?        // acuerdos de contenido, visible para producción; sin montos
+  propuestaIa     Json?          // lectura automática del contrato en PDF, pendiente de aprobación
+  propuestaIaEn   DateTime?
   documentoUrl    String?
   renovacionDeId  String?        @unique
   renovacionDe    Contrato?      @relation("Renovacion", fields: [renovacionDeId], references: [id])

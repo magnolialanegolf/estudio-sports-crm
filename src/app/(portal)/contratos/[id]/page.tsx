@@ -11,6 +11,8 @@ import { Anillo } from "@/components/graficas";
 import { LineaTiempo } from "./linea-tiempo";
 import { PanelHito, PanelCompromiso, AccionesCompromiso, BorrarHito } from "./paneles";
 import { SubirDocumento, BorrarDocumento } from "./documentos";
+import { BotonAnalizar, PanelPropuesta } from "./lector";
+import { EsquemaPropuesta, iaConfigurada } from "@/lib/ia";
 import { PanelSolicitud, PanelPagoRecibido, Autorizar } from "@/app/(portal)/pagos/paneles";
 import { esAdmin, esDeCartera, puedeCobrar } from "@/lib/acceso";
 
@@ -50,6 +52,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
   const comisionDevengada = comisiones.reduce((a, k) => a + k.comision, 0);
   const comisionProyectadaTotal = veComision ? c.hitos.reduce((a, h) => a + comisionProyectada(h, ctx, reglas), 0) : 0;
   const sinRegla = comisiones.some((k) => !k.regla);
+  const propuestaIa = c.propuestaIa ? EsquemaPropuesta.safeParse(c.propuestaIa) : null;
   const entregables = c.compromisos.filter((k) => k.tipo === "ENTREGABLE" && k.estado !== "CANCELADO");
   const entregablesCumplidos = entregables.filter((k) => k.estado === "CUMPLIDO").length;
   const entregablesRetrasados = entregables.filter((k) => k.estado !== "CUMPLIDO" && ((k.fecha && k.fecha < hoy) || k.estado === "REQUIERE_ATENCION")).length;
@@ -254,6 +257,12 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
           ) : null}
         </Tarjeta>
 
+        {puedeEditar && propuestaIa?.success ? (
+          <div className="xl:col-span-3">
+            <PanelPropuesta contratoId={c.id} propuesta={propuestaIa.data} fechaPropuesta={fecha(c.propuestaIaEn)} tieneHitos={c.hitos.length > 0} asignables={asignables} />
+          </div>
+        ) : null}
+
         <Tarjeta
           titulo="Compromisos y acciones"
           descripcion={
@@ -331,7 +340,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
 
         <Tarjeta titulo="Documentos" descripcion="Contrato firmado y anexos. Solo los ven el director de la cartera y la administración." className="xl:col-span-3">
           {c.documentos.length === 0 ? (
-            <Vacio>Sin documentos del contrato. Sube el contrato firmado en PDF. Las facturas y comprobantes viven en cada hito de cobro.</Vacio>
+            <Vacio>Sin documentos del contrato. Sube el contrato firmado en PDF y pulsa «Leer con IA» para que el portal proponga los acuerdos de contenido y los entregables.</Vacio>
           ) : (
             <ul className="-mx-5 divide-y divide-linea/70">
               {c.documentos.map((d) => (
@@ -345,6 +354,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
                   <div className="flex items-center gap-3 text-xs">
                     <a href={`/api/documentos/${d.id}`} target="_blank" rel="noreferrer" className="text-acento hover:underline">Ver</a>
                     <a href={`/api/documentos/${d.id}?descargar=1`} className="text-acento hover:underline">Descargar</a>
+                    {puedeEditar && d.tipoMime === "application/pdf" ? <BotonAnalizar documentoId={d.id} configurado={iaConfigurada()} /> : null}
                     {puedeEditar ? <BorrarDocumento id={d.id} /> : null}
                   </div>
                 </li>
