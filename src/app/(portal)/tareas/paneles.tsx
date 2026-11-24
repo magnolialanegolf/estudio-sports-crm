@@ -26,7 +26,7 @@ export function FormularioReporte({ compromisoId, estado, reporte, produccion }:
       </label>
       {r?.error ? <p className="rounded border border-riesgo/30 bg-riesgo-suave px-3 py-2 text-sm text-riesgo">{r.error}</p> : null}
       {r?.ok ? <p className="rounded border border-ok/30 bg-ok-suave px-3 py-2 text-sm text-ok">Reporte guardado.</p> : null}
-      <button type="submit" disabled={pendiente} className="w-full rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white disabled:opacity-60">
+      <button type="submit" disabled={pendiente} className="inline-flex h-10 w-full items-center justify-center rounded-md border border-acento bg-acento px-3.5 text-sm font-medium text-white shadow-sm hover:bg-acento-2 disabled:opacity-60">
         {pendiente ? "Guardando…" : abierta ? "Guardar reporte" : "Actualizar"}
       </button>
     </form>

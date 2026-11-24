@@ -28,7 +28,7 @@ export default async function InformeDirector({ params, searchParams }: { params
         <SelectorPeriodo ruta={ruta} actual={q.periodo} desde={q.desde} hasta={q.hasta} extra={{ comisiones: q.comisiones }} />
         <div className="flex flex-wrap items-center gap-2">
           {puedeVerComisiones ? (
-            <Link href={`${ruta}?${new URLSearchParams({ ...(q.periodo ? { periodo: q.periodo } : {}), ...(q.desde ? { desde: q.desde } : {}), ...(q.hasta ? { hasta: q.hasta } : {}), comisiones: incluirComisiones ? "0" : "1" }).toString()}`} className="rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium hover:bg-superficie-2">
+            <Link href={`${ruta}?${new URLSearchParams({ ...(q.periodo ? { periodo: q.periodo } : {}), ...(q.desde ? { desde: q.desde } : {}), ...(q.hasta ? { hasta: q.hasta } : {}), comisiones: incluirComisiones ? "0" : "1" }).toString()}`} className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">
               {incluirComisiones ? "Ocultar comisiones" : "Incluir comisiones"}
             </Link>
           ) : null}

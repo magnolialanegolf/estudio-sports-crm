@@ -51,8 +51,8 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<{
       subtitulo={produccion ? "Lo que tienes que producir, con marca y fecha. Reporta cada una al terminarla." : "Compromisos con las marcas y seguimientos, por fecha y responsable"}
       acciones={
         <div className="flex flex-wrap gap-2">
-          <Link href="/tareas" className={`rounded border px-3 py-1.5 text-xs font-medium ${soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Abiertas</Link>
-          <Link href="/tareas?ver=todas" className={`rounded border px-3 py-1.5 text-xs font-medium ${!soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Todas</Link>
+          <Link href="/tareas" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Abiertas</Link>
+          <Link href="/tareas?ver=todas" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Todas</Link>
           {!produccion && asignables.length > 0 ? (
             <form method="get" action="/tareas" className="flex items-center gap-1.5">
               {!soloAbiertas ? <input type="hidden" name="ver" value="todas" /> : null}

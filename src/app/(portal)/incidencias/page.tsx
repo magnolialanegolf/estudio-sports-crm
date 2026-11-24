@@ -32,8 +32,8 @@ export default async function Incidencias({ searchParams }: { searchParams: Prom
       subtitulo="Problemas, pendientes y solicitudes de cualquier nivel, con responsable, prioridad y fecha límite"
       acciones={
         <>
-          <Link href="/incidencias" className={`rounded border px-3 py-1.5 text-xs font-medium ${soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Abiertas</Link>
-          <Link href="/incidencias?ver=todas" className={`rounded border px-3 py-1.5 text-xs font-medium ${!soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Todas</Link>
+          <Link href="/incidencias" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Abiertas</Link>
+          <Link href="/incidencias?ver=todas" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!soloAbiertas ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2"}`}>Todas</Link>
           <Boton href="/incidencias/nueva" tipo="primario">Reportar</Boton>
         </>
       }

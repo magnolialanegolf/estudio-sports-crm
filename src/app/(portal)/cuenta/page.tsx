@@ -45,9 +45,9 @@ export default async function Cuenta({ searchParams }: { searchParams: Promise<{
           {liga ? (
             <div id="calendario" className="space-y-3 text-sm">
               <div className="no-imprimir flex flex-wrap gap-2">
-                <a href={google!} target="_blank" rel="noreferrer" className="rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white hover:bg-[#182e4b]">Agregar a Google Calendar</a>
-                <a href={webcal!} className="rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium text-tinta hover:bg-superficie-2">Agregar a iPhone / Mac</a>
-                <a href={webcal!} className="rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium text-tinta hover:bg-superficie-2">Agregar a Outlook</a>
+                <a href={google!} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-md border border-acento bg-acento px-3.5 text-sm font-medium text-white shadow-sm hover:bg-acento-2">Agregar a Google Calendar</a>
+                <a href={webcal!} className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium text-tinta shadow-sm hover:border-acento-2 hover:text-acento">Agregar a iPhone / Mac</a>
+                <a href={webcal!} className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium text-tinta shadow-sm hover:border-acento-2 hover:text-acento">Agregar a Outlook</a>
               </div>
               <p className="text-xs text-tinta-2">Es una suscripción, no una descarga: lo que cambie en el portal se refleja en tu agenda. Google tarda hasta unas horas en refrescar; iPhone y Outlook, minutos.</p>
               <div>

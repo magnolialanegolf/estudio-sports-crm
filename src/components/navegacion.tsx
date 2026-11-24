@@ -81,22 +81,22 @@ export function Navegacion({
   return (
     <>
       <header className="no-imprimir sticky top-0 z-20 border-b border-linea bg-superficie/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center">
             <Logotipo compacto />
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/avisos" className={`relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium ${avisos > 0 ? "border-acento bg-acento-suave text-acento" : "border-linea-fuerte text-tinta-2 hover:bg-superficie-2"}`} aria-label={`Avisos: ${avisos} sin leer`}>
+            <Link href="/avisos" className={`relative inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium ${avisos > 0 ? "border-acento bg-acento-suave text-acento" : "border-linea-fuerte text-tinta-2 hover:bg-superficie-2"}`} aria-label={`Avisos: ${avisos} sin leer`}>
               <Icono.avisos />
               <span className="hidden sm:inline">Avisos</span>
               {avisos > 0 ? <span className="rounded-full bg-naranja px-1.5 text-[11px] font-semibold text-white">{avisos}</span> : null}
             </Link>
-            <div className="hidden text-right sm:block">
+            <div className="hidden text-right leading-tight sm:block">
               <div className="text-sm font-medium text-tinta">{nombre}</div>
               <div className="text-[11px] uppercase tracking-wide text-tinta-3">{rolEtiqueta}</div>
             </div>
             <form action={salir}>
-              <button type="submit" className="rounded border border-linea-fuerte px-3 py-1.5 text-xs font-medium text-tinta hover:bg-superficie-2">
+              <button type="submit" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium text-tinta hover:border-acento-2 hover:text-acento">
                 Salir
               </button>
             </form>
@@ -104,7 +104,7 @@ export function Navegacion({
               type="button"
               aria-label="Menú"
               onClick={() => setAbierto((v) => !v)}
-              className="rounded border border-linea-fuerte px-3 py-1.5 text-xs font-medium lg:hidden"
+              className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium lg:hidden"
             >
               Menú
             </button>
@@ -128,7 +128,7 @@ export function Navegacion({
       </header>
       <div className="flex flex-1 flex-col lg:flex-row">
       <aside className="no-imprimir hidden w-56 shrink-0 border-r border-linea bg-superficie lg:block">
-        <nav className="sticky top-14 flex flex-col gap-0.5 p-3">
+        <nav className="sticky top-16 flex flex-col gap-0.5 p-3">
           {principal.map((e) => (
             <Enlace key={e.href} e={e} ruta={ruta} alNavegar={cerrar} />
           ))}

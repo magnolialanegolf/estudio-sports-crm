@@ -28,7 +28,7 @@ export function Formulario({
       {estado?.error ? <p className="rounded border border-riesgo/30 bg-riesgo-suave px-3 py-2 text-sm text-riesgo">{estado.error}</p> : null}
       {estado?.ok ? <p className="rounded border border-ok/30 bg-ok-suave px-3 py-2 text-sm text-ok">Guardado.</p> : null}
       <div className="flex justify-end gap-2 pt-1">
-        <button type="submit" disabled={pendiente} className="rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white hover:bg-[#182e4b] disabled:opacity-60">
+        <button type="submit" disabled={pendiente} className="inline-flex h-9 items-center rounded-md border border-acento bg-acento px-3.5 text-sm font-medium text-white shadow-sm hover:bg-acento-2 disabled:opacity-60">
           {pendiente ? "Guardando…" : textoBoton}
         </button>
       </div>
@@ -58,7 +58,7 @@ export function Confirmar({ accion, texto, mensaje = "¿Confirmas la eliminació
         if (!window.confirm(mensaje)) e.preventDefault();
       }}
     >
-      <button type="submit" className="rounded border border-riesgo/40 px-2.5 py-1 text-xs font-medium text-riesgo hover:bg-riesgo-suave">
+      <button type="submit" className="inline-flex h-9 items-center rounded-md border border-riesgo/40 bg-superficie px-3.5 text-sm font-medium text-riesgo hover:bg-riesgo-suave">
         {texto}
       </button>
     </form>
@@ -67,7 +67,7 @@ export function Confirmar({ accion, texto, mensaje = "¿Confirmas la eliminació
 
 export function BotonImprimir() {
   return (
-    <button type="button" onClick={() => window.print()} className="no-imprimir rounded border border-linea-fuerte bg-superficie px-3.5 py-2 text-sm font-medium text-tinta hover:bg-superficie-2">
+    <button type="button" onClick={() => window.print()} className="no-imprimir inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium text-tinta shadow-sm hover:border-acento-2 hover:text-acento">
       Imprimir / PDF
     </button>
   );

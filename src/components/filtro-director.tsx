@@ -20,7 +20,7 @@ export function FiltroDirector({
       <label className="text-xs font-medium uppercase tracking-wide text-tinta-3" htmlFor="director">
         Director
       </label>
-      <select id="director" name="director" defaultValue={actual ?? ""} className="campo !w-auto max-w-[12rem] !py-1.5 text-sm">
+      <select id="director" name="director" defaultValue={actual ?? ""} className="campo h-9 !w-auto max-w-[12rem] !py-0 text-sm">
         <option value="">Todos</option>
         {directores.map((d) => (
           <option key={d.id} value={d.id}>
@@ -29,7 +29,7 @@ export function FiltroDirector({
           </option>
         ))}
       </select>
-      <button type="submit" className="rounded border border-linea-fuerte bg-superficie px-3 py-1.5 text-xs font-medium hover:bg-superficie-2">
+      <button type="submit" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">
         Aplicar
       </button>
     </form>

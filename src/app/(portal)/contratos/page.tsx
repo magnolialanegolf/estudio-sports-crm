@@ -38,14 +38,14 @@ export default async function Contratos({ searchParams }: { searchParams: Promis
       }
     >
       <div className="no-imprimir mb-4 flex flex-wrap gap-1.5">
-        <Link href="/contratos" className={`rounded border px-3 py-1 text-xs font-medium ${!filtroEstado ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
+        <Link href="/contratos" className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!filtroEstado ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
           Activos e históricos
         </Link>
         {ESTADOS.map((e) => (
           <Link
             key={e}
             href={`/contratos?estado=${e}`}
-            className={`rounded border px-3 py-1 text-xs font-medium ${filtroEstado === e ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}
+            className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${filtroEstado === e ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}
           >
             {etiqueta("estadoContrato", e)}
           </Link>

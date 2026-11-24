@@ -20,12 +20,13 @@ export function Monograma({ tamano = 36, className = "" }: { tamano?: number; cl
 }
 
 export function Logotipo({ compacto = false, claro = false }: { compacto?: boolean; claro?: boolean }) {
+  // Alturas fijas para que nunca se corte: mascota 28/40 px, bloque de texto 36/48 px.
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <Mascota alto={compacto ? 30 : 42} color={claro ? "#ffffff" : "#00345e"} />
-      <span className="flex flex-col leading-none">
-        <span className={`titulo-marca ${compacto ? "text-[19px]" : "text-2xl"} ${claro ? "text-white" : "text-acento"}`}>Estudio Sports</span>
-        <span className={`etiqueta-marca mt-1 text-[9px] ${claro ? "text-white/70" : "text-naranja"}`}>CRM comercial</span>
+    <span className={`inline-flex items-center gap-3 ${compacto ? "h-10" : "h-12"}`}>
+      <Mascota alto={compacto ? 28 : 40} color={claro ? "#ffffff" : "#00345e"} className="shrink-0" />
+      <span className="flex flex-col justify-center">
+        <span className={`titulo-marca ${compacto ? "text-[18px] leading-[20px]" : "text-[24px] leading-[26px]"} ${claro ? "text-white" : "text-acento"}`}>Estudio Sports</span>
+        <span className={`etiqueta-marca ${compacto ? "text-[8px] leading-[12px]" : "text-[9px] leading-[14px]"} ${claro ? "text-white/70" : "text-naranja"}`}>CRM comercial</span>
       </span>
     </span>
   );

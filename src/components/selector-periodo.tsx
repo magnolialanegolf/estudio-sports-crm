@@ -19,7 +19,7 @@ export function SelectorPeriodo({ ruta, actual, desde, hasta, extra }: { ruta: s
     <div className="no-imprimir flex flex-wrap items-center gap-2">
       <div className="flex gap-1">
         {opciones.map((o) => (
-          <Link key={o.v} href={q({ periodo: o.v, desde: undefined, hasta: undefined })} className={`rounded border px-3 py-1.5 text-xs font-medium ${!libre && (actual ?? "trimestre") === o.v ? "border-acento bg-acento-suave text-acento" : "border-linea text-tinta-2 hover:bg-superficie-2"}`}>
+          <Link key={o.v} href={q({ periodo: o.v, desde: undefined, hasta: undefined })} className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${!libre && (actual ?? "trimestre") === o.v ? "border-acento bg-acento-suave text-acento" : "border-linea-fuerte bg-superficie text-tinta-2 hover:text-acento"}`}>
             {o.t}
           </Link>
         ))}
@@ -30,10 +30,10 @@ export function SelectorPeriodo({ ruta, actual, desde, hasta, extra }: { ruta: s
               .filter(([, v]) => v)
               .map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)
           : null}
-        <input type="date" name="desde" defaultValue={desde} className="campo !w-auto !py-1.5 text-xs" aria-label="Desde" />
+        <input type="date" name="desde" defaultValue={desde} className="campo h-9 !w-auto !py-0 text-sm" aria-label="Desde" />
         <span className="text-xs text-tinta-3">a</span>
-        <input type="date" name="hasta" defaultValue={hasta} className="campo !w-auto !py-1.5 text-xs" aria-label="Hasta" />
-        <button type="submit" className="rounded border border-linea-fuerte bg-superficie px-3 py-1.5 text-xs font-medium hover:bg-superficie-2">Aplicar</button>
+        <input type="date" name="hasta" defaultValue={hasta} className="campo h-9 !w-auto !py-0 text-sm" aria-label="Hasta" />
+        <button type="submit" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Aplicar</button>
       </form>
     </div>
   );

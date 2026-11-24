@@ -17,12 +17,12 @@ export function Pagina({
 }) {
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-[26px] font-semibold text-tinta">{titulo}</h1>
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-[26px] leading-tight text-tinta">{titulo}</h1>
           {subtitulo ? <p className="mt-1 text-sm text-tinta-2">{subtitulo}</p> : null}
         </div>
-        {acciones ? <div className="no-imprimir flex flex-wrap items-center gap-2">{acciones}</div> : null}
+        {acciones ? <div className="no-imprimir flex shrink-0 flex-wrap items-center gap-2">{acciones}</div> : null}
       </header>
       {children}
     </div>
@@ -144,8 +144,8 @@ export function Boton({
   value?: string;
   formAction?: (formData: FormData) => void | Promise<void>;
 }) {
-  const base = `inline-flex items-center justify-center rounded-md border font-medium transition-colors disabled:opacity-50 ${
-    pequeno ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm"
+  const base = `inline-flex items-center justify-center whitespace-nowrap rounded-md border font-medium leading-none transition-colors disabled:opacity-50 ${
+    pequeno ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm"
   }`;
   const estilo = {
     primario: "border-acento bg-acento text-white shadow-sm hover:bg-acento-2",

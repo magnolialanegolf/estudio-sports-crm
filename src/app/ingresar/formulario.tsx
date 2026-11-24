@@ -25,7 +25,7 @@ export function FormularioIngreso({ destino, aviso }: { destino?: string; aviso?
       <button
         type="submit"
         disabled={pendiente}
-        className="w-full rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white hover:bg-[#182e4b] disabled:opacity-60"
+        className="inline-flex h-10 w-full items-center justify-center rounded-md border border-acento bg-acento px-3.5 text-sm font-medium text-white shadow-sm hover:bg-acento-2 disabled:opacity-60"
       >
         {pendiente ? "Verificando…" : "Ingresar"}
       </button>

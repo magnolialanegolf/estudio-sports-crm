@@ -33,20 +33,20 @@ export default async function Reportes() {
         {global ? (
           <Tarjeta titulo="Informe consolidado de Estudio Sports" descripcion="Para el administrador general y los socios: toda la empresa y el comparativo por director.">
             <div className="flex flex-wrap gap-2 text-sm">
-              <Link href="/reportes/consolidado?periodo=mes" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Mes en curso</Link>
-              <Link href="/reportes/consolidado?periodo=trimestre" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Trimestre</Link>
-              <Link href="/reportes/consolidado?periodo=anio" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Año</Link>
-              <Link href="/reportes/consolidado?periodo=todo" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Histórico</Link>
+              <Link href="/reportes/consolidado?periodo=mes" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Mes en curso</Link>
+              <Link href="/reportes/consolidado?periodo=trimestre" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Trimestre</Link>
+              <Link href="/reportes/consolidado?periodo=anio" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Año</Link>
+              <Link href="/reportes/consolidado?periodo=todo" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Histórico</Link>
             </div>
             {!veComisionesDeTodos(s) ? <p className="mt-3 text-xs text-tinta-3">Tu rol no incluye comisiones; el informe las omite.</p> : null}
           </Tarjeta>
         ) : (
           <Tarjeta titulo="Exportaciones" descripcion="Datos de tu cartera en CSV para Excel.">
             <div className="flex flex-wrap gap-2 text-sm">
-              <Link href="/api/exportar/contratos" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Contratos</Link>
-              <Link href="/api/exportar/hitos" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Hitos de cobro</Link>
-              <Link href="/api/exportar/comisiones" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Comisiones</Link>
-              <Link href="/api/exportar/calendario.ics" className="rounded border border-linea-fuerte px-3.5 py-2 font-medium hover:bg-superficie-2">Calendario ICS</Link>
+              <Link href="/api/exportar/contratos" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Contratos</Link>
+              <Link href="/api/exportar/hitos" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Hitos de cobro</Link>
+              <Link href="/api/exportar/comisiones" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Comisiones</Link>
+              <Link href="/api/exportar/calendario.ics" className="inline-flex h-9 items-center rounded-md border border-linea-fuerte bg-superficie px-3.5 text-sm font-medium shadow-sm hover:border-acento-2 hover:text-acento">Calendario ICS</Link>
             </div>
           </Tarjeta>
         )}
