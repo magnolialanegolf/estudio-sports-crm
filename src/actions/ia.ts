@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { registrar } from "@/lib/bitacora";
 import { autorizaContrato, puedeCapturar, requerirSesion } from "@/lib/acceso";
 import { analizarContratoPdf, EsquemaPropuesta, iaConfigurada, type PropuestaIa } from "@/lib/ia";
+import type { Sesion } from "@/lib/sesion";
 import type { Resultado } from "./util";
 
 const fecha = (v: string | null | undefined) => {
@@ -14,10 +15,8 @@ const fecha = (v: string | null | undefined) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-// 1. Lee el PDF del contrato y guarda la propuesta para revisión.
-export async function analizarDocumento(documentoId: string): Promise<Resultado> {
-  const s = await requerirSesion();
-  if (!puedeCapturar(s)) return { error: "Sin permiso." };
+// Lee un documento PDF y guarda la propuesta en el contrato. Lo usan la subida automática y el botón.
+export async function leerYGuardarPropuesta(documentoId: string, s: Sesion): Promise<Resultado> {
   if (!iaConfigurada()) return { error: "El lector de contratos no está configurado en este entorno." };
   const d = await db.documento.findUnique({ where: { id: documentoId }, include: { contrato: { select: { id: true, directorId: true, proyecto: true, marca: { select: { nombre: true } } } } } });
   if (!d || !autorizaContrato(s, d.contrato)) return { error: "Documento no disponible." };
@@ -29,11 +28,23 @@ export async function analizarDocumento(documentoId: string): Promise<Resultado>
     revalidatePath(`/contratos/${d.contrato.id}`);
     return { ok: true };
   } catch (e) {
-    return { error: `No se pudo analizar el contrato: ${(e as Error).message}` };
+    return { error: `No se pudo leer el contrato: ${(e as Error).message}` };
   }
 }
 
-// 2. Aplica la propuesta aprobada: acuerdos de contenido, entregables, fechas clave y datos del contrato.
+export async function analizarDocumento(documentoId: string): Promise<Resultado> {
+  const s = await requerirSesion();
+  if (!puedeCapturar(s)) return { error: "Sin permiso." };
+  return leerYGuardarPropuesta(documentoId, s);
+}
+
+const texto = (fd: FormData, k: string, max = 400) => String(fd.get(k) ?? "").trim().slice(0, max);
+const numero = (fd: FormData, k: string) => {
+  const n = Number(String(fd.get(k) ?? "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Aplica lo que el usuario marcó y corrigió en la ventana: acuerdos, datos, acciones, fechas clave y pagos.
 export async function aplicarPropuesta(contratoId: string, _prev: Resultado, fd: FormData): Promise<Resultado> {
   const s = await requerirSesion();
   if (!puedeCapturar(s)) return { error: "Sin permiso." };
@@ -43,17 +54,12 @@ export async function aplicarPropuesta(contratoId: string, _prev: Resultado, fd:
   if (!parse.success) return { error: "No hay una propuesta válida que aplicar." };
   const p: PropuestaIa = parse.data;
 
-  const aplicarBrief = fd.get("brief") === "on";
-  const aplicarDatos = fd.get("datos") === "on";
-  const aplicarEntregables = fd.get("entregables") === "on";
-  const aplicarFechas = fd.get("fechas") === "on";
-  const aplicarHitos = fd.get("hitos") === "on" && c.hitos.length === 0;
-  const asignadoAId = String(fd.get("asignadoAId") ?? "") || null;
-  const editorId = String(fd.get("editorId") ?? "") || null;
+  const asignadoAId = texto(fd, "asignadoAId", 64) || null;
+  const editorId = texto(fd, "editorId", 64) || null;
 
   const datos: Prisma.ContratoUpdateInput = { propuestaIa: Prisma.DbNull, propuestaIaEn: null };
-  if (aplicarBrief) datos.brief = p.acuerdosContenido;
-  if (aplicarDatos) {
+  if (fd.get("brief") === "on") datos.brief = texto(fd, "acuerdosContenido", 8000) || p.acuerdosContenido;
+  if (fd.get("datos") === "on") {
     if (p.talento && !c.talento) datos.talento = p.talento;
     if (p.inicio && !c.inicio) datos.inicio = fecha(p.inicio);
     if (p.vencimiento && !c.vencimiento) datos.vencimiento = fecha(p.vencimiento);
@@ -61,46 +67,59 @@ export async function aplicarPropuesta(contratoId: string, _prev: Resultado, fd:
   }
   await db.contrato.update({ where: { id: contratoId }, data: datos });
 
+  const existentes = new Set(c.compromisos.map((k) => k.descripcion));
   let creados = 0;
-  if (aplicarEntregables) {
-    const existentes = new Set(c.compromisos.map((k) => k.descripcion));
-    for (const e of p.entregables) {
-      const cantidad = Math.min(Math.max(e.cantidad, 1), 60);
-      const base = fecha(e.fechaInicio) ?? c.inicio ?? null;
-      for (let i = 0; i < cantidad; i++) {
-        const descripcion = cantidad > 1 ? `${e.descripcion} (${i + 1} de ${cantidad})` : e.descripcion;
-        if (existentes.has(descripcion)) continue;
-        let f: Date | null = null;
-        if (base && (cantidad === 1 || e.periodicidad !== "UNICA")) {
-          f = new Date(base);
-          if (e.periodicidad === "SEMANA") f.setUTCDate(f.getUTCDate() + 7 * i);
-          else if (e.periodicidad === "QUINCENA") f.setUTCDate(f.getUTCDate() + 15 * i);
-          else if (e.periodicidad === "MES") f.setUTCMonth(f.getUTCMonth() + i);
-        }
-        await db.compromiso.create({ data: { contratoId, tipo: "ENTREGABLE", etapa: "POR_AUTORIZAR", descripcion, fecha: f, notas: e.detalle, asignadoAId, editorId, creadoPorId: s.usuarioId } });
-        creados += 1;
+  for (let i = 0; i < p.entregables.length; i++) {
+    if (fd.get(`e${i}_incluir`) !== "on") continue;
+    const descripcionBase = texto(fd, `e${i}_descripcion`) || p.entregables[i].descripcion;
+    const cantidad = Math.min(Math.max(Math.round(numero(fd, `e${i}_cantidad`)) || p.entregables[i].cantidad, 1), 60);
+    const periodicidadRaw = texto(fd, `e${i}_periodicidad`, 12);
+    const periodicidad = (["UNICA", "SEMANA", "QUINCENA", "MES"].includes(periodicidadRaw) ? periodicidadRaw : p.entregables[i].periodicidad) as "UNICA" | "SEMANA" | "QUINCENA" | "MES";
+    const base = fecha(texto(fd, `e${i}_fechaInicio`, 10)) ?? fecha(p.entregables[i].fechaInicio) ?? c.inicio ?? null;
+    for (let n = 0; n < cantidad; n++) {
+      const descripcion = cantidad > 1 ? `${descripcionBase} (${n + 1} de ${cantidad})` : descripcionBase;
+      if (existentes.has(descripcion)) continue;
+      let f: Date | null = null;
+      if (base && (cantidad === 1 || periodicidad !== "UNICA")) {
+        f = new Date(base);
+        if (periodicidad === "SEMANA") f.setUTCDate(f.getUTCDate() + 7 * n);
+        else if (periodicidad === "QUINCENA") f.setUTCDate(f.getUTCDate() + 15 * n);
+        else if (periodicidad === "MES") f.setUTCMonth(f.getUTCMonth() + n);
       }
-    }
-  }
-  if (aplicarFechas) {
-    const existentes = new Set(c.compromisos.map((k) => k.descripcion));
-    for (const k of p.fechasClave) {
-      if (existentes.has(k.descripcion)) continue;
-      await db.compromiso.create({ data: { contratoId, tipo: "FECHA_CLAVE", descripcion: k.descripcion, fecha: fecha(k.fecha), creadoPorId: s.usuarioId } });
+      await db.compromiso.create({ data: { contratoId, tipo: "ENTREGABLE", etapa: "POR_AUTORIZAR", descripcion, fecha: f, notas: p.entregables[i].detalle, asignadoAId, editorId, creadoPorId: s.usuarioId } });
+      existentes.add(descripcion);
       creados += 1;
     }
   }
-  let hitos = 0;
-  if (aplicarHitos) {
-    for (const h of p.hitosCobro) {
-      if (!h.importe) continue;
-      await db.hitoCobro.create({ data: { contratoId, concepto: h.concepto, importe: Math.round(h.importe), fechaFacturar: fecha(h.fecha), confirmado: false, notas: "Propuesto por el lector de contratos; confirmar contra el documento." } });
-      hitos += 1;
-    }
+  for (let i = 0; i < p.fechasClave.length; i++) {
+    if (fd.get(`k${i}_incluir`) !== "on") continue;
+    const descripcion = texto(fd, `k${i}_descripcion`) || p.fechasClave[i].descripcion;
+    if (existentes.has(descripcion)) continue;
+    await db.compromiso.create({ data: { contratoId, tipo: "FECHA_CLAVE", descripcion, fecha: fecha(texto(fd, `k${i}_fecha`, 10)) ?? fecha(p.fechasClave[i].fecha), creadoPorId: s.usuarioId } });
+    existentes.add(descripcion);
+    creados += 1;
   }
-  await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "contrato", entidadId: contratoId, detalle: { lectorIa: "propuesta aplicada", brief: aplicarBrief, compromisos: creados, hitos } });
+  let hitos = 0;
+  for (let i = 0; i < p.hitosCobro.length; i++) {
+    if (fd.get(`h${i}_incluir`) !== "on") continue;
+    const importe = Math.round(numero(fd, `h${i}_importe`) || p.hitosCobro[i].importe || 0);
+    if (importe <= 0) continue;
+    await db.hitoCobro.create({
+      data: { contratoId, concepto: texto(fd, `h${i}_concepto`, 200) || p.hitosCobro[i].concepto, importe, fechaFacturar: fecha(texto(fd, `h${i}_fecha`, 10)) ?? fecha(p.hitosCobro[i].fecha), confirmado: false, notas: "Propuesto por el lector de contratos; confirmar contra el documento." },
+    });
+    hitos += 1;
+  }
+  if (asignadoAId || editorId) {
+    const ids = [asignadoAId, editorId].filter((x): x is string => Boolean(x));
+    const { notificar } = await import("@/lib/avisos");
+    await notificar(ids, `${s.nombre} cargó ${creados} acción(es) del contrato leído. Quedan por autorizar.`, `/tareas`, s.usuarioId);
+  }
+  await registrar({ usuarioId: s.usuarioId, accion: "editar", entidad: "contrato", entidadId: contratoId, detalle: { lectorIa: "propuesta aplicada", brief: fd.get("brief") === "on", compromisos: creados, hitos } });
   revalidatePath(`/contratos/${contratoId}`);
   revalidatePath("/tareas");
+  revalidatePath("/pagos");
+  revalidatePath("/calendario");
+  revalidatePath("/");
   return { ok: true };
 }
 

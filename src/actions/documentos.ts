@@ -1,5 +1,8 @@
 "use server";
 
+import { iaConfigurada } from "@/lib/ia";
+import { leerYGuardarPropuesta } from "./ia";
+
 import { revalidatePath } from "next/cache";
 import type { CategoriaDocumento } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -64,6 +67,14 @@ export async function subirDocumento(contratoId: string, _prev: Resultado, fd: F
   if (categoria === "COMPROBANTE" && !puedeCobrar(s) && s.rol !== "DIRECTOR") return { error: "Sin permiso." };
   const r = await guardarArchivo({ usuarioId: s.usuarioId, contratoId, hitoId, categoria, archivo: archivo as File, descripcion: String(fd.get("descripcion") ?? "").trim().slice(0, 300) || null });
   if ("error" in r) return { error: r.error };
+  // Un contrato en PDF se lee al momento: la ventana con acciones y pagos aparece al terminar.
+  if (categoria === "CONTRATO" && (archivo as File).type === "application/pdf" && iaConfigurada()) {
+    const lectura = await leerYGuardarPropuesta(r.id, s);
+    if (lectura && "error" in lectura && lectura.error) {
+      revalidatePath(`/contratos/${contratoId}`);
+      return { error: `El archivo se guardó, pero ${lectura.error.charAt(0).toLowerCase()}${lectura.error.slice(1)} Puedes volver a intentarlo con «Volver a leer».` };
+    }
+  }
   revalidatePath(`/contratos/${contratoId}`);
   revalidatePath("/pagos");
   return { ok: true };

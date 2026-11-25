@@ -20,6 +20,9 @@ import { EsquemaPropuesta, iaConfigurada } from "@/lib/ia";
 import { PanelSolicitud, PanelPagoRecibido, Autorizar } from "@/app/(portal)/pagos/paneles";
 import { esAdmin, esDeCartera, esProduccion, puedeCobrar } from "@/lib/acceso";
 
+// La subida de un contrato lo lee con IA en la misma acción; necesita más tiempo que el límite por defecto.
+export const maxDuration = 120;
+
 export default async function DetalleContrato({ params }: { params: Promise<{ id: string }> }) {
   const s = await requerirSesion();
   const { id } = await params;
@@ -385,7 +388,7 @@ export default async function DetalleContrato({ params }: { params: Promise<{ id
           )}
           {puedeEditar ? (
             <div className="mt-4">
-              <SubirDocumento contratoId={c.id} />
+              <SubirDocumento contratoId={c.id} lectorActivo={iaConfigurada()} />
             </div>
           ) : null}
         </Tarjeta>

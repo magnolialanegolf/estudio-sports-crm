@@ -4,7 +4,7 @@ import { useActionState, useRef } from "react";
 import { eliminarDocumento, subirDocumento } from "@/actions/documentos";
 import type { Resultado } from "@/actions/util";
 
-export function SubirDocumento({ contratoId }: { contratoId: string }) {
+export function SubirDocumento({ contratoId, lectorActivo }: { contratoId: string; lectorActivo: boolean }) {
   const accion = subirDocumento.bind(null, contratoId);
   const ref = useRef<HTMLFormElement>(null);
   const [r, despachar, pendiente] = useActionState<Resultado, FormData>(async (prev, fd) => {
@@ -30,9 +30,10 @@ export function SubirDocumento({ contratoId }: { contratoId: string }) {
         <input name="descripcion" className="campo !py-1.5 text-sm" placeholder="Contrato firmado, anexo de entregables…" />
       </label>
       <button type="submit" disabled={pendiente} className="rounded border border-acento bg-acento px-3.5 py-2 text-sm font-medium text-white disabled:opacity-60">
-        {pendiente ? "Subiendo…" : "Subir"}
+        {pendiente ? (lectorActivo ? "Subiendo y leyendo…" : "Subiendo…") : "Subir"}
       </button>
       {r?.error ? <p className="text-sm text-riesgo sm:ml-2">{r.error}</p> : null}
+      {pendiente && lectorActivo ? <p className="text-xs text-tinta-3 sm:ml-2">La lectura tarda entre 20 y 60 segundos. Al terminar aparece la ventana con lo identificado.</p> : null}
     </form>
   );
 }
