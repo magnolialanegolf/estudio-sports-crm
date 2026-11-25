@@ -30,6 +30,11 @@ export function fecha(d: Date | null | undefined): string {
   return format(d, "d MMM yyyy", { locale: es });
 }
 
+export function fechaHora(d: Date | null | undefined): string {
+  if (!d) return "—";
+  return format(d, "d MMM yyyy, HH:mm", { locale: es });
+}
+
 export function fechaLarga(d: Date | null | undefined): string {
   if (!d) return "—";
   return format(d, "d 'de' MMMM 'de' yyyy", { locale: es });

@@ -107,6 +107,12 @@ model Usuario {
   activo       Boolean   @default(true)
   debeCambiarClave Boolean @default(false) // obliga a cambiar la contraseña al ingresar
   avisosPorCorreo Boolean @default(true)   // además de la campana, correo cuando el envío esté conectado
+  sincronizarCalendario Boolean @default(true) // ida y vuelta con Google Calendar cuando esté conectado
+  googleRefreshToken String?               // conexión propia a su Google Calendar (solo calendario)
+  googleCorreo String?                     // cuenta de Google conectada
+  calendarioGoogleId String?               // calendario «Estudio Sports» creado en su cuenta
+  calendarioSincronizadoEn DateTime?
+  calendarioError String?
   creadoEn     DateTime  @default(now())
   ultimoAcceso DateTime?
   icsToken     String?   // liga privada del calendario personal

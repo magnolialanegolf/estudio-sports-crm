@@ -7,11 +7,14 @@ import { FormularioClave } from "./formulario";
 import { desactivarLigaCalendario, renovarLigaCalendario } from "@/actions/calendario";
 import { PanelCorreo } from "./correo";
 import { correoConfigurado } from "@/lib/correo";
+import { PanelCalendarioPush } from "./calendario-push";
+import { calendarioPushConfigurado } from "@/lib/google-calendar";
+import { fechaHora } from "@/lib/formato";
 
-export default async function Cuenta({ searchParams }: { searchParams: Promise<{ cambiar?: string }> }) {
+export default async function Cuenta({ searchParams }: { searchParams: Promise<{ cambiar?: string; calendario?: string }> }) {
   const s = await requerirSesion();
-  const { cambiar } = await searchParams;
-  const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { icsToken: true, correo: true, avisosPorCorreo: true } });
+  const { cambiar, calendario } = await searchParams;
+  const u = await db.usuario.findUnique({ where: { id: s.usuarioId }, select: { icsToken: true, correo: true, avisosPorCorreo: true, sincronizarCalendario: true, calendarioSincronizadoEn: true, calendarioError: true, googleRefreshToken: true, googleCorreo: true } });
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -38,6 +41,9 @@ export default async function Cuenta({ searchParams }: { searchParams: Promise<{
         </Tarjeta>
         <Tarjeta titulo="Cambiar contraseña" descripcion="Mínimo 12 caracteres.">
           <FormularioClave />
+        </Tarjeta>
+        <Tarjeta titulo="Google Calendar, ida y vuelta" descripcion="Un calendario aparte, solo del portal, en tu Google personal o de empresa.">
+          <PanelCalendarioPush configurado={calendarioPushConfigurado()} conectado={Boolean(u?.googleRefreshToken)} cuenta={u?.googleCorreo ?? null} activo={u?.sincronizarCalendario ?? true} ultima={u?.calendarioSincronizadoEn ? fechaHora(u.calendarioSincronizadoEn) : null} error={u?.calendarioError ?? null} aviso={calendario} />
         </Tarjeta>
         <Tarjeta titulo="Avisos por correo" descripcion="Cada traspaso, asignación o autorización que te involucre.">
           <PanelCorreo correo={u?.correo ?? null} activo={u?.avisosPorCorreo ?? true} configurado={correoConfigurado()} />
